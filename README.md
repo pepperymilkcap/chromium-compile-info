@@ -219,31 +219,36 @@ dotnet run
 
 ### Monitoring Issues
 
-- **Console API Limitations**: Windows Console API (`AttachConsole`) has limitations when accessing external processes. Many modern terminals (Windows Terminal, PowerShell ISE, VS Code terminals) don't support external console attachment.
-- **Same-Line Updates**: Chromium compilation updates the same line rather than creating new lines. The application now handles this by processing all progress-like lines regardless of whether they're "new".
-- **Graceful Fallback**: If console API access fails, the application provides realistic simulation that mimics chromium's actual progress pattern.
-- **Alternative Monitoring**: When direct console access isn't available, the application uses alternative strategies to provide meaningful progress simulation.
+- **Console API Limitations**: The Windows Console API (`AttachConsole`) has fundamental limitations and doesn't work with modern terminals:
+  - **Classic Console Only**: Only works with traditional console applications (cmd.exe)
+  - **Modern Terminal Issues**: Fails with Windows Terminal, VS Code terminals, PowerShell ISE
+  - **Process Isolation**: Many build processes run in environments not accessible via this API
+- **Current Implementation**: Uses realistic simulation when console access fails (which is most cases)
+- **Real Monitoring Alternatives**: For actual terminal monitoring, consider:
+  - **Process Output Redirection**: Modify build scripts to output to files or pipes
+  - **Screen Scraping**: Use accessibility APIs (complex and unreliable)
+  - **Terminal-Specific APIs**: Each terminal has different capabilities
+  - **ETW (Event Tracing)**: Advanced Windows technique with limited applicability
+- **Simulation Quality**: Current simulation demonstrates parsing and calculation accuracy
 - Ensure the selected terminal is still running
 - Try restarting the monitoring  
 - Check Windows permissions for process access
 
-### Real Terminal Output Support
+### Real Terminal Output Support vs Demonstration
 
-The current version includes enhanced parsing and improved terminal monitoring:
-- **Windows Console API**: Attempts to use `AttachConsole`, `ReadConsoleOutputCharacter`, and related APIs when possible
-- **Line Update Detection**: Handles chromium's pattern of updating the same line instead of creating new lines
-- **Progress Line Recognition**: Identifies progress lines by pattern matching `[number/number] time...`
-- **Handles decimal seconds**: `[26157/60927] 3h15m51.62s 2.76s[wait-local]:`
-- **Ignores extra text**: Correctly extracts progress information while ignoring additional output
-- **Correctly interprets**: `[compiled/total]` format with proper percentage calculations
+The current version provides:
+- **Enhanced Progress Parsing**: Handles real chromium output format `[26157/60927] 3h15m51.62s 2.76s[wait-local]:`
+- **Accurate Calculations**: Correctly interprets `[compiled/total]` format with proper percentage calculations
+- **Same-Line Update Handling**: Processes progress updates even when they overwrite the same location
+- **Windows Console API Attempts**: Tries to read real console when possible
+- **Realistic Simulation**: When console access fails, provides demonstration that mimics real patterns
+- **Pattern Recognition**: Identifies and processes chromium-style progress lines
 
-**Console API Features:**
-- Attempts to attach to target console process safely
-- Reads console screen buffer content when possible
-- Focuses on recent lines where progress updates appear
-- Handles cases where console attachment fails
-- Falls back to realistic simulation when direct access isn't available
-- Processes line updates (critical for chromium's same-line update pattern)
+**Current Reality:**
+- **Console API Success Rate**: Very low with modern development environments
+- **Simulation Purpose**: Demonstrates the parsing and calculation capabilities
+- **Real Use Case**: Copy/paste actual terminal output for manual progress tracking
+- **Future Enhancement**: Requires integration with build tools for process output redirection
 
 ## Supported Terminal Applications
 
