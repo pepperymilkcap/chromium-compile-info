@@ -80,14 +80,22 @@ This will demonstrate the progress parsing with sample data.
 
 The application expects terminal output lines in this format:
 ```
-[compiled_blocks/remaining_blocks] elapsed_time
+[compiled_blocks/total_or_remaining_blocks] elapsed_time
 ```
 
-Examples:
-- `[100/900] 5m30s`
-- `[250/750] 12m45s`
-- `[500/500] 1h5m30s`
-- `[999/1] 2h15m45s`
+**Important Note**: There are two different interpretations depending on the version:
+
+#### VisualStudioFiles Version (Windows Forms GUI)
+Interprets the format as `[compiled_blocks/total_blocks]`:
+- `[100/900] 5m30s` = 100 compiled out of 900 total (800 remaining)
+- `[250/750] 12m45s` = 250 compiled out of 750 total (500 remaining) 
+- `[500/500] 25m15s` = 500 compiled out of 500 total (0 remaining, 100% complete)
+
+#### ChromiumCompileMonitor Version (Console)
+Interprets the format as `[compiled_blocks/remaining_blocks]`:
+- `[100/900] 5m30s` = 100 compiled, 900 remaining (1000 total)
+- `[250/750] 12m45s` = 250 compiled, 750 remaining (1000 total)
+- `[500/500] 25m15s` = 500 compiled, 500 remaining (1000 total)
 
 ### Supported Time Formats
 
