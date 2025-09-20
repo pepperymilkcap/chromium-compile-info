@@ -219,24 +219,28 @@ dotnet run
 
 ### Monitoring Issues
 
-- **Important**: The current terminal monitoring implementation is a placeholder that generates simulated data for testing purposes. It does NOT read actual terminal output. This explains why you might see different values in the console vs the form display.
-- For real terminal monitoring, additional implementation is needed using Windows Console APIs, ETW, or other platform-specific methods.
+- **Windows Console API Integration**: The application now attempts to read actual terminal output using Windows Console API calls. This provides real-time monitoring of console applications.
+- **Graceful Fallback**: If console API access fails (due to permissions or compatibility), the application falls back to simulated data to ensure continued operation.
+- **Console Access Requirements**: Some terminal applications may require elevated permissions or may not be accessible via standard Console API calls.
 - Ensure the selected terminal is still running
 - Try restarting the monitoring
 - Check Windows permissions for process access
 
 ### Real Terminal Output Support
 
-The current version includes enhanced parsing that supports real chromium compilation output format:
-- Handles decimal seconds: `[26157/60927] 3h15m51.62s 2.76s[wait-local]:`
-- Ignores extra text after the timestamp
-- Correctly interprets `[compiled/total]` format
+The current version includes both enhanced parsing and actual terminal monitoring:
+- **Windows Console API**: Uses `AttachConsole`, `ReadConsoleOutputCharacter`, and related APIs to read real terminal content
+- **Real-time Updates**: Monitors console screen buffers for new content and processes it in real-time  
+- **Handles decimal seconds**: `[26157/60927] 3h15m51.62s 2.76s[wait-local]:`
+- **Ignores extra text**: Correctly extracts progress information while ignoring additional output
+- **Correctly interprets**: `[compiled/total]` format with proper percentage calculations
 
-However, actual terminal output capture requires platform-specific implementation using:
-- Windows Console API for console screen buffers
-- ETW (Event Tracing for Windows) for console events
-- UI Automation APIs for terminal content access
-- ConPTY for programmatic terminal stream access
+**Console API Features:**
+- Attaches to target console process safely
+- Reads console screen buffer content
+- Detects new lines and processes them for progress information
+- Automatically detaches when monitoring stops
+- Falls back to simulation if API access fails
 
 ## Supported Terminal Applications
 
