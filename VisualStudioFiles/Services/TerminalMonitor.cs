@@ -349,7 +349,7 @@ namespace ChromiumCompileMonitor.Services
                     
                     // Focus on the last few lines where progress updates typically appear
                     // This is more efficient and catches the most recent updates
-                    var startLine = Math.Max(bufferInfo.srWindow.Top, bufferInfo.srWindow.Bottom - 10);
+                    var startLine = (short)Math.Max(bufferInfo.srWindow.Top, bufferInfo.srWindow.Bottom - 10);
                     
                     for (short y = startLine; y <= bufferInfo.srWindow.Bottom; y++)
                     {
