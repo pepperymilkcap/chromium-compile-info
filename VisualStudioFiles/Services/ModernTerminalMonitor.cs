@@ -267,6 +267,8 @@ namespace ChromiumCompileMonitor.Services
 
         private async Task MonitorTerminalContinuously(IntPtr windowHandle)
         {
+            var errorReported = false;
+            
             while (!_cancellationTokenSource?.Token.IsCancellationRequested == true)
             {
                 try
@@ -276,12 +278,7 @@ namespace ChromiumCompileMonitor.Services
                     
                     if (string.IsNullOrEmpty(content))
                     {
-                        content = await GetTerminalContentViaScreenCapture(windowHandle);
-                    }
-                    
-                    if (string.IsNullOrEmpty(content))
-                    {
-                        content = await GetTerminalContentViaAccessibility(windowHandle);
+                        content = GetTerminalContentSync();
                     }
 
                     // Process new content
@@ -290,6 +287,13 @@ namespace ChromiumCompileMonitor.Services
                         ProcessNewContent(content);
                         _lastContent = content;
                     }
+                    else if (!errorReported && string.IsNullOrEmpty(content))
+                    {
+                        // Report that we're monitoring but can't read content
+                        LineReceived?.Invoke("Info: Monitoring Windows 11 terminal - content reading may be limited due to security restrictions.");
+                        LineReceived?.Invoke("Note: For full monitoring capabilities, ensure the application has necessary permissions.");
+                        errorReported = true;
+                    }
 
                     await Task.Delay(500, _cancellationTokenSource.Token);
                 }
@@ -297,8 +301,13 @@ namespace ChromiumCompileMonitor.Services
                 {
                     break;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    if (!errorReported)
+                    {
+                        LineReceived?.Invoke($"Warning: Terminal monitoring encountered an issue: {ex.Message}");
+                        errorReported = true;
+                    }
                     // Continue monitoring with exponential backoff
                     await Task.Delay(2000, _cancellationTokenSource.Token);
                 }

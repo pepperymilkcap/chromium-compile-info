@@ -73,11 +73,11 @@ namespace ChromiumCompileMonitor
                 Padding = new Padding(10)
             };
 
-            // Set up row styles
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));  // Terminal selection - increased height
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));  // Progress overview - increased height
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Detailed info
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));  // Status bar - increased height
+            // Set up row styles with adequate heights to prevent text cutoff
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 110));  // Terminal selection - increased height for dropdown text
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 110));  // Progress overview - increased height for progress text
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // Detailed info
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));   // Status bar - increased height for status text
 
             // Terminal Selection Group
             var terminalGroup = CreateTerminalSelectionGroup();
@@ -123,7 +123,8 @@ namespace ChromiumCompileMonitor
             {
                 Dock = DockStyle.Fill,
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Margin = new Padding(5)
+                Margin = new Padding(5),
+                Font = new Font(Font.FontFamily, 9, FontStyle.Regular) // Ensure readable font size
             };
             _terminalComboBox.SelectedIndexChanged += TerminalComboBox_SelectedIndexChanged;
 
@@ -167,7 +168,7 @@ namespace ChromiumCompileMonitor
                 RowCount = 2,
                 Margin = new Padding(3)
             };
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); // Increased height for progress bar
+            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 35)); // Increased height for progress bar
             panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             _progressBar = new ProgressBar
@@ -208,7 +209,7 @@ namespace ChromiumCompileMonitor
                 ColumnCount = 1,
                 RowCount = 2
             };
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 180)); // Increased height for info panel
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 200)); // Increased height for info panel to prevent text cutoff
             mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             // Info panel
@@ -222,37 +223,37 @@ namespace ChromiumCompileMonitor
             infoPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190)); // Increased width
             infoPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             
-            // Add row styles for proper spacing
+            // Add row styles for proper spacing and prevent text cutoff
             for (int i = 0; i < 6; i++)
             {
-                infoPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 28)); // Increased row height
+                infoPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32)); // Increased row height to prevent cutoff
             }
 
             var labelFont = new Font(Font, FontStyle.Bold);
 
-            // Time Information
-            infoPanel.Controls.Add(new Label { Text = "Time Elapsed:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 0);
-            _elapsedTimeLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
+            // Time Information with improved spacing
+            infoPanel.Controls.Add(new Label { Text = "Time Elapsed:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) }, 0, 0);
+            _elapsedTimeLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) };
             infoPanel.Controls.Add(_elapsedTimeLabel, 1, 0);
 
-            infoPanel.Controls.Add(new Label { Text = "Estimated Time Remaining:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 1);
-            _estimatedRemainingLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
+            infoPanel.Controls.Add(new Label { Text = "Estimated Time Remaining:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) }, 0, 1);
+            _estimatedRemainingLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) };
             infoPanel.Controls.Add(_estimatedRemainingLabel, 1, 1);
 
-            infoPanel.Controls.Add(new Label { Text = "Estimated Total Time:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 2);
-            _estimatedTotalLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
+            infoPanel.Controls.Add(new Label { Text = "Estimated Total Time:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) }, 0, 2);
+            _estimatedTotalLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) };
             infoPanel.Controls.Add(_estimatedTotalLabel, 1, 2);
 
-            infoPanel.Controls.Add(new Label { Text = "Time per Block:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 3);
-            _timePerBlockLabel = new Label { Text = "0.00 seconds", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
+            infoPanel.Controls.Add(new Label { Text = "Time per Block:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) }, 0, 3);
+            _timePerBlockLabel = new Label { Text = "0.00 seconds", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) };
             infoPanel.Controls.Add(_timePerBlockLabel, 1, 3);
 
-            infoPanel.Controls.Add(new Label { Text = "Speed Trend:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 4);
-            _speedTrendLabel = new Label { Text = "Unknown", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
+            infoPanel.Controls.Add(new Label { Text = "Speed Trend:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) }, 0, 4);
+            _speedTrendLabel = new Label { Text = "Unknown", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) };
             infoPanel.Controls.Add(_speedTrendLabel, 1, 4);
 
-            infoPanel.Controls.Add(new Label { Text = "Last Update:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 5);
-            _lastUpdateLabel = new Label { Text = "--:--:--", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
+            infoPanel.Controls.Add(new Label { Text = "Last Update:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) }, 0, 5);
+            _lastUpdateLabel = new Label { Text = "--:--:--", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 4, 0, 4) };
             infoPanel.Controls.Add(_lastUpdateLabel, 1, 5);
 
             // Log output
@@ -261,7 +262,7 @@ namespace ChromiumCompileMonitor
             {
                 Text = "Recent Output:",
                 Font = labelFont,
-                Height = 20,
+                Height = 25, // Increased height to prevent cutoff
                 Dock = DockStyle.Top
             };
 

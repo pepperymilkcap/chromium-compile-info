@@ -110,125 +110,17 @@ namespace ChromiumCompileMonitor.Services
         private CancellationTokenSource? _cancellationTokenSource;
         private readonly HashSet<string> _seenLines = new();
         private readonly List<string> _lastConsoleContent = new();
-        private readonly ProcessMonitor _processMonitor = new();
         private readonly ModernTerminalMonitor _modernTerminalMonitor = new();
 
         public TerminalMonitor()
         {
-            // Set up process monitor event handlers
-            _processMonitor.OutputLineReceived += OnProcessOutputReceived;
-            _processMonitor.ErrorLineReceived += OnProcessErrorReceived;
-            
             // Set up modern terminal monitor event handlers
             _modernTerminalMonitor.LineReceived += OnModernTerminalLineReceived;
         }
 
         /// <summary>
-        /// Starts monitoring a build process by launching it directly and capturing its output.
-        /// This is the most reliable method for real-time build monitoring.
+        /// Event handler for terminal lines received from modern terminal monitoring.
         /// </summary>
-        /// <param name="executable">Build executable (e.g., "ninja", "autoninja", "make")</param>
-        /// <param name="arguments">Command line arguments</param>
-        /// <param name="workingDirectory">Working directory for the build</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if monitoring started successfully</returns>
-        public async Task<bool> StartBuildMonitoringAsync(
-            string executable, 
-            string arguments = "", 
-            string workingDirectory = "", 
-            CancellationToken cancellationToken = default)
-        {
-            StopMonitoring();
-            
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            
-            var success = await _processMonitor.StartProcessMonitoringAsync(
-                executable, arguments, workingDirectory, _cancellationTokenSource.Token);
-                
-            if (success)
-            {
-                // Create a dummy TerminalInfo for the process
-                _monitoredTerminal = new TerminalInfo
-                {
-                    ProcessId = 0, // Will be set by process monitor
-                    ProcessName = executable,
-                    WindowTitle = $"Build Process: {executable} {arguments}",
-                    WindowHandle = IntPtr.Zero
-                };
-            }
-            
-            return success;
-        }
-
-        /// <summary>
-        /// Starts monitoring a log file for build progress updates.
-        /// Useful when the build process outputs progress to a file.
-        /// </summary>
-        /// <param name="logFilePath">Path to the log file</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        public async Task StartLogFileMonitoringAsync(string logFilePath, CancellationToken cancellationToken = default)
-        {
-            StopMonitoring();
-            
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            
-            await _processMonitor.StartFileMonitoringAsync(logFilePath, _cancellationTokenSource.Token);
-            
-            _monitoredTerminal = new TerminalInfo
-            {
-                ProcessId = 0,
-                ProcessName = "FileMonitor",
-                WindowTitle = $"Log File: {Path.GetFileName(logFilePath)}",
-                WindowHandle = IntPtr.Zero
-            };
-        }
-
-        /// <summary>
-        /// Starts monitoring a named pipe for build progress updates.
-        /// </summary>
-        /// <param name="pipeName">Name of the named pipe</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        public async Task StartPipeMonitoringAsync(string pipeName, CancellationToken cancellationToken = default)
-        {
-            StopMonitoring();
-            
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            
-            await _processMonitor.StartPipeMonitoringAsync(pipeName, _cancellationTokenSource.Token);
-            
-            _monitoredTerminal = new TerminalInfo
-            {
-                ProcessId = 0,
-                ProcessName = "PipeMonitor",
-                WindowTitle = $"Named Pipe: {pipeName}",
-                WindowHandle = IntPtr.Zero
-            };
-        }
-
-        private void OnProcessOutputReceived(string line)
-        {
-            // Process the line for progress information
-            if (IsProgressLine(line))
-            {
-                ProcessUpdatedLine(line);
-            }
-            
-            // Also forward all lines to any listeners
-            NewLineReceived?.Invoke(line);
-        }
-
-        private void OnProcessErrorReceived(string line)
-        {
-            // Error lines might also contain progress information in some build systems
-            if (IsProgressLine(line))
-            {
-                ProcessUpdatedLine(line);
-            }
-            
-            // Forward error lines as well
-            NewLineReceived?.Invoke($"ERROR: {line}");
-        }
-
         private void OnModernTerminalLineReceived(string line)
         {
             // Process lines from modern terminal monitoring
@@ -242,108 +134,10 @@ namespace ChromiumCompileMonitor.Services
         }
 
         /// <summary>
-        /// Gets available terminal windows for legacy terminal monitoring.
-        /// For reliable monitoring, use StartBuildMonitoringAsync instead.
+        /// Gets available terminal windows for monitoring existing Windows 11 terminals.
+        /// Only returns actual existing terminal processes - does not include options to launch new processes.
         /// </summary>
         public async Task<List<TerminalInfo>> GetAvailableTerminalsAsync()
-        {
-            return await Task.Run(() =>
-            {
-                var terminals = new List<TerminalInfo>();
-                var windows = new List<(IntPtr handle, string title, uint processId)>();
-
-                // Add option for direct build monitoring
-                terminals.Add(new TerminalInfo
-                {
-                    ProcessId = -1,
-                    ProcessName = "DirectBuild",
-                    WindowTitle = "Launch Build Process Directly (Recommended)",
-                    WindowHandle = IntPtr.Zero
-                });
-
-                // Add option for log file monitoring
-                terminals.Add(new TerminalInfo
-                {
-                    ProcessId = -2,
-                    ProcessName = "LogFile",
-                    WindowTitle = "Monitor Log File",
-                    WindowHandle = IntPtr.Zero
-                });
-
-                // Enumerate all visible windows for legacy support
-                EnumWindows((hWnd, lParam) =>
-                {
-                    if (!IsWindowVisible(hWnd))
-                        return true;
-
-                    var length = GetWindowTextLength(hWnd);
-                    if (length == 0)
-                        return true;
-
-                    var builder = new StringBuilder(length + 1);
-                    GetWindowText(hWnd, builder, builder.Capacity);
-                    var title = builder.ToString();
-
-                    if (string.IsNullOrWhiteSpace(title))
-                        return true;
-
-                    GetWindowThreadProcessId(hWnd, out var processId);
-                    windows.Add((hWnd, title, processId));
-
-                    return true;
-                }, IntPtr.Zero);
-
-                // Filter for terminal-like processes
-                var terminalProcessNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    "cmd", "powershell", "WindowsTerminal", "wt", "ConEmu", "ConEmu64",
-                    "mintty", "bash", "ubuntu", "kali", "debian", "opensuse"
-                };
-
-                foreach (var (handle, title, processId) in windows)
-                {
-                    try
-                    {
-                        var process = Process.GetProcessById((int)processId);
-                        var processName = process.ProcessName;
-
-                        if (terminalProcessNames.Contains(processName) || 
-                            title.Contains("Command Prompt", StringComparison.OrdinalIgnoreCase) ||
-                            title.Contains("PowerShell", StringComparison.OrdinalIgnoreCase) ||
-                            title.Contains("Terminal", StringComparison.OrdinalIgnoreCase) ||
-                            title.Contains("Ubuntu", StringComparison.OrdinalIgnoreCase) ||
-                            title.Contains("WSL", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // Modern terminals get enhanced monitoring
-                            var isModernTerminal = processName.Equals("WindowsTerminal", StringComparison.OrdinalIgnoreCase) ||
-                                                 processName.Equals("wt", StringComparison.OrdinalIgnoreCase) ||
-                                                 title.Contains("Windows Terminal", StringComparison.OrdinalIgnoreCase) ||
-                                                 title.Contains("VS Code", StringComparison.OrdinalIgnoreCase);
-                            
-                            var displayTitle = isModernTerminal 
-                                ? title + " (Enhanced Modern Terminal Monitoring)" 
-                                : title + " (Legacy - Limited Functionality)";
-                            
-                            terminals.Add(new TerminalInfo
-                            {
-                                ProcessId = (int)processId,
-                                ProcessName = processName,
-                                WindowTitle = displayTitle,
-                                WindowHandle = handle
-                            });
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        // Ignore processes we can't access
-                    }
-                }
-
-                return terminals.DistinctBy(t => t.ProcessId).ToList();
-            });
-        }
-
-        private async Task<List<TerminalInfo>> GetAvailableTerminalsAsyncInternal()
         {
             return await Task.Run(() =>
             {
@@ -373,11 +167,17 @@ namespace ChromiumCompileMonitor.Services
                     return true;
                 }, IntPtr.Zero);
 
-                // Filter for terminal-like processes
+                // Filter for terminal-like processes - enhanced for Windows 11
                 var terminalProcessNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    "cmd", "powershell", "WindowsTerminal", "wt", "ConEmu", "ConEmu64",
-                    "mintty", "bash", "ubuntu", "kali", "debian", "opensuse"
+                    // Windows 11 / Windows Terminal
+                    "WindowsTerminal", "wt", "WindowsTerminal.exe",
+                    // Traditional terminals
+                    "cmd", "powershell", "pwsh", "powershell_ise",
+                    // Third-party terminals
+                    "ConEmu", "ConEmu64", "mintty", "alacritty", "hyper",
+                    // WSL and Linux terminals
+                    "bash", "ubuntu", "kali", "debian", "opensuse", "wsl"
                 };
 
                 foreach (var (handle, title, processId) in windows)
@@ -387,18 +187,38 @@ namespace ChromiumCompileMonitor.Services
                         var process = Process.GetProcessById((int)processId);
                         var processName = process.ProcessName;
 
-                        if (terminalProcessNames.Contains(processName) || 
+                        // Enhanced detection for Windows 11 terminals
+                        var isTerminalProcess = terminalProcessNames.Contains(processName) || 
                             title.Contains("Command Prompt", StringComparison.OrdinalIgnoreCase) ||
                             title.Contains("PowerShell", StringComparison.OrdinalIgnoreCase) ||
                             title.Contains("Terminal", StringComparison.OrdinalIgnoreCase) ||
                             title.Contains("Ubuntu", StringComparison.OrdinalIgnoreCase) ||
-                            title.Contains("WSL", StringComparison.OrdinalIgnoreCase))
+                            title.Contains("WSL", StringComparison.OrdinalIgnoreCase) ||
+                            title.Contains("Windows Subsystem for Linux", StringComparison.OrdinalIgnoreCase);
+
+                        if (isTerminalProcess)
                         {
+                            // Specifically identify Windows 11 Terminal and modern terminals
+                            var isWindows11Terminal = processName.Equals("WindowsTerminal", StringComparison.OrdinalIgnoreCase) ||
+                                                     processName.Equals("wt", StringComparison.OrdinalIgnoreCase) ||
+                                                     title.Contains("Windows Terminal", StringComparison.OrdinalIgnoreCase);
+                            
+                            var isModernTerminal = isWindows11Terminal ||
+                                                 title.Contains("VS Code", StringComparison.OrdinalIgnoreCase) ||
+                                                 processName.Equals("pwsh", StringComparison.OrdinalIgnoreCase) ||
+                                                 processName.Equals("alacritty", StringComparison.OrdinalIgnoreCase);
+                            
+                            var displayTitle = isWindows11Terminal 
+                                ? title + " (Windows 11 Terminal - Enhanced Monitoring)" 
+                                : isModernTerminal 
+                                    ? title + " (Modern Terminal - Enhanced Monitoring)"
+                                    : title + " (Legacy Terminal - Basic Monitoring)";
+                            
                             terminals.Add(new TerminalInfo
                             {
                                 ProcessId = (int)processId,
                                 ProcessName = processName,
-                                WindowTitle = title,
+                                WindowTitle = displayTitle,
                                 WindowHandle = handle
                             });
                         }
@@ -413,90 +233,63 @@ namespace ChromiumCompileMonitor.Services
             });
         }
 
+
+
         /// <summary>
-        /// Starts monitoring an active terminal window using advanced techniques for modern terminals.
-        /// This is the primary method for monitoring existing terminal processes.
+        /// Starts monitoring an existing terminal window using advanced techniques for modern Windows 11 terminals.
+        /// This only monitors existing terminal processes and does not launch new ones.
         /// </summary>
-        /// <param name="terminal">Terminal information</param>
+        /// <param name="terminal">Terminal information for existing terminal window</param>
         /// <param name="cancellationToken">Cancellation token</param>
         public async Task StartMonitoringAsync(TerminalInfo terminal, CancellationToken cancellationToken = default)
         {
-            // Handle special monitoring options
-            if (terminal.ProcessId == -1) // Direct Build Monitoring
+            // Only monitor existing terminal windows - no process launching
+            if (terminal.WindowHandle == IntPtr.Zero || terminal.ProcessId <= 0)
             {
-                // This would typically be configured through a UI dialog
-                // For now, provide common chromium build examples
-                var success = await StartBuildMonitoringAsync(
-                    "autoninja", 
-                    "-C out/Default chrome", 
-                    "", 
-                    cancellationToken);
-                    
-                if (!success)
-                {
-                    // Try alternative build commands
-                    success = await StartBuildMonitoringAsync(
-                        "ninja", 
-                        "-C out/Default chrome", 
-                        "", 
-                        cancellationToken);
-                }
-                
-                return;
+                throw new ArgumentException("Invalid terminal: WindowHandle and ProcessId must be valid for existing terminals");
             }
-            else if (terminal.ProcessId == -2) // Log File Monitoring
-            {
-                // Monitor common log file locations
-                var logPaths = new[]
-                {
-                    "build.log",
-                    "ninja.log", 
-                    "out/Default/build.log",
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "build.log")
-                };
-                
-                foreach (var logPath in logPaths)
-                {
-                    if (File.Exists(logPath))
-                    {
-                        await StartLogFileMonitoringAsync(logPath, cancellationToken);
-                        return;
-                    }
-                }
-                
-                // If no log files found, create a demo log file monitor
-                await StartLogFileMonitoringAsync("build.log", cancellationToken);
-                return;
-            }
-            
-            // Modern Terminal Monitoring (Primary for active terminals)
-            if (terminal.WindowHandle != IntPtr.Zero)
-            {
-                StopMonitoring();
-                
-                // Try modern terminal monitoring first
-                var modernSuccess = await _modernTerminalMonitor.StartMonitoringAsync(terminal.WindowHandle, cancellationToken);
-                
-                if (modernSuccess)
-                {
-                    _monitoredTerminal = terminal;
-                    _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    return;
-                }
-            }
-            
-            // Legacy terminal monitoring (limited functionality)
+
+            StopMonitoring();
             _monitoredTerminal = terminal;
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _seenLines.Clear();
             _lastConsoleContent.Clear();
 
+            // Determine if this is a Windows 11 / modern terminal
+            var isWindows11Terminal = terminal.ProcessName.Equals("WindowsTerminal", StringComparison.OrdinalIgnoreCase) ||
+                                     terminal.ProcessName.Equals("wt", StringComparison.OrdinalIgnoreCase) ||
+                                     terminal.WindowTitle.Contains("Windows Terminal", StringComparison.OrdinalIgnoreCase);
+
+            var isModernTerminal = isWindows11Terminal ||
+                                 terminal.WindowTitle.Contains("VS Code", StringComparison.OrdinalIgnoreCase) ||
+                                 terminal.ProcessName.Equals("pwsh", StringComparison.OrdinalIgnoreCase);
+
+            // For Windows 11 and modern terminals, try enhanced monitoring first
+            if (isModernTerminal)
+            {
+                var modernSuccess = await _modernTerminalMonitor.StartMonitoringAsync(terminal.WindowHandle, cancellationToken);
+                
+                if (modernSuccess)
+                {
+                    // Modern terminal monitoring is active - ModernTerminalMonitor will handle events
+                    return;
+                }
+                
+                // If modern monitoring fails, notify but don't fall back to simulation
+                // Modern terminals often require elevated permissions or specific configurations
+                NewLineReceived?.Invoke($"Warning: Enhanced monitoring failed for {terminal.ProcessName}. Terminal content may not be visible.");
+                NewLineReceived?.Invoke("Note: Windows 11 Terminal monitoring may require running the application as administrator.");
+            }
+
+            // For legacy terminals or as fallback, attempt basic console monitoring
+            // This will NOT use simulation - only real console data
             await Task.Run(async () =>
             {
                 while (!_cancellationTokenSource.Token.IsCancellationRequested)
                 {
                     try
                     {
+                        // Basic monitoring approach - attempts to read real terminal content
                         await MonitorProcessOutputAsync(terminal.ProcessId);
                         await Task.Delay(1000, _cancellationTokenSource.Token);
                     }
@@ -519,66 +312,31 @@ namespace ChromiumCompileMonitor.Services
             {
                 try
                 {
-                    // Try Windows Console API first, but this has significant limitations
+                    // For Windows 11 terminals, the traditional console API approach has limitations.
+                    // Modern terminals like Windows Terminal use different architectures.
+                    // We attempt basic console reading but rely primarily on ModernTerminalMonitor.
+                    
                     var consoleContent = ReadConsoleOutput(processId);
                     if (consoleContent != null && consoleContent.Count > 0)
                     {
                         ProcessConsoleContent(consoleContent);
                         return; // Successfully read from console
                     }
+                    
+                    // If console reading fails, we don't simulate.
+                    // The monitoring depends on ModernTerminalMonitor for Windows 11 terminals.
+                    // This ensures we only show actual terminal output, not simulated data.
                 }
                 catch (Exception)
                 {
-                    // Console API failed, which is expected for most modern terminals
+                    // Console API failed - this is expected for modern Windows 11 terminals
+                    // The ModernTerminalMonitor should handle the actual monitoring
                 }
-                
-                // IMPORTANT: The Windows Console API has fundamental limitations:
-                // - It only works with classic console applications (cmd.exe)
-                // - Modern terminals (Windows Terminal, VS Code, PowerShell ISE) don't support AttachConsole
-                // - Many build processes run in shells that aren't accessible via this API
-                //
-                // For real terminal monitoring, you would need:
-                // 1. Process output redirection (if you control the build process)
-                // 2. Screen scraping using accessibility APIs (complex and unreliable)
-                // 3. Terminal-specific APIs (varies by terminal application)
-                // 4. ETW (Event Tracing for Windows) - advanced and limited
-                //
-                // Current implementation provides demonstration simulation
-                GenerateRealisticSimulation();
             });
         }
-
-        private void GenerateRealisticSimulation()
-        {
-            // Since real console access often fails, provide simulation that shows
-            // the parsing and calculation capabilities work correctly
-            // This simulates realistic chromium compilation progress
-            
-            var random = new Random();
-            
-            // Generate more realistic progress that changes over time
-            var timestamp = DateTime.Now;
-            var baseProgress = (timestamp.Minute * 60 + timestamp.Second) % 3600; // Changes every hour
-            
-            // Simulate realistic chromium compilation numbers
-            var compiled = 25000 + baseProgress * 10; // Gradually increasing
-            var total = 60000 + random.Next(-5000, 5000); // Slightly varying total
-            
-            // Ensure compiled doesn't exceed total
-            compiled = Math.Min(compiled, total - 1);
-            
-            var hours = 3 + (baseProgress / 1800); // Increases over time
-            var minutes = (baseProgress / 30) % 60;
-            var seconds = baseProgress % 60;
-            var milliseconds = random.Next(0, 100);
-            
-            var timePerBlock = 1.0 + random.NextDouble() * 3.0; // Realistic time per block
-            
-            var elapsed = $"{hours}h{minutes}m{seconds}.{milliseconds:D2}s";
-            var progressLine = $"[{compiled}/{total}] {elapsed} {timePerBlock:F2}s[wait-local]: CXX obj/v8/v8_compiler/some-file.obj";
-            
-            ProcessUpdatedLine(progressLine);
         }
+
+
 
         private void ProcessUpdatedLine(string line)
         {
@@ -748,7 +506,6 @@ namespace ChromiumCompileMonitor.Services
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
             
-            _processMonitor.StopMonitoring();
             _modernTerminalMonitor.StopMonitoring();
             
             _monitoredTerminal = null;
@@ -759,7 +516,6 @@ namespace ChromiumCompileMonitor.Services
         public bool IsMonitoring => (_monitoredTerminal != null && 
                                    _cancellationTokenSource != null && 
                                    !_cancellationTokenSource.Token.IsCancellationRequested) ||
-                                   _processMonitor.IsMonitoring ||
                                    _modernTerminalMonitor.IsMonitoring;
     }
 }
