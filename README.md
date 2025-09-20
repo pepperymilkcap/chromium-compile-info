@@ -95,10 +95,13 @@ This interpretation aligns with standard build system conventions where progress
 
 ### Supported Time Formats
 
-- **XmYs**: Minutes and seconds (e.g., "5m30s")
-- **HhMmSs**: Hours, minutes, and seconds (e.g., "1h5m30s")
+- **XmYs**: Minutes and seconds (e.g., "5m30s", "5m30.5s")
+- **HhMmSs**: Hours, minutes, and seconds (e.g., "1h5m30s", "1h5m30.62s")
 - **Seconds only**: Plain seconds (e.g., "330s" or "330")
 - **Minutes only**: Plain minutes (e.g., "5m")
+- **Decimal seconds**: Supports fractional seconds in all formats for precise timing
+
+**Note**: The parser handles real chromium output format like `[26157/60927] 3h15m51.62s 2.76s[wait-local]:` and extracts the correct timing information while ignoring extra text.
 
 ### Calculations
 
@@ -216,9 +219,24 @@ dotnet run
 
 ### Monitoring Issues
 
+- **Important**: The current terminal monitoring implementation is a placeholder that generates simulated data for testing purposes. It does NOT read actual terminal output. This explains why you might see different values in the console vs the form display.
+- For real terminal monitoring, additional implementation is needed using Windows Console APIs, ETW, or other platform-specific methods.
 - Ensure the selected terminal is still running
 - Try restarting the monitoring
 - Check Windows permissions for process access
+
+### Real Terminal Output Support
+
+The current version includes enhanced parsing that supports real chromium compilation output format:
+- Handles decimal seconds: `[26157/60927] 3h15m51.62s 2.76s[wait-local]:`
+- Ignores extra text after the timestamp
+- Correctly interprets `[compiled/total]` format
+
+However, actual terminal output capture requires platform-specific implementation using:
+- Windows Console API for console screen buffers
+- ETW (Event Tracing for Windows) for console events
+- UI Automation APIs for terminal content access
+- ConPTY for programmatic terminal stream access
 
 ## Supported Terminal Applications
 

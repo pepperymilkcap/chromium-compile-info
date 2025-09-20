@@ -153,16 +153,21 @@ namespace ChromiumCompileMonitor.Services
 
         private async Task MonitorProcessOutputAsync(int processId)
         {
-            // This is a placeholder for actual terminal output monitoring
-            // In a real implementation, you would need to use platform-specific APIs
-            // to safely read terminal output without interfering with the process
-            
-            // For demonstration purposes, we'll simulate receiving lines
-            // In practice, you might use:
-            // - Windows Console API to read from console buffers
-            // - ETW (Event Tracing for Windows) to monitor console events
-            // - Accessibility APIs to read terminal content
-            // - Or hook into the terminal's scrollback buffer
+            // IMPORTANT NOTE: This is currently a placeholder implementation that generates
+            // simulated data for testing purposes. It does NOT read actual terminal output.
+            // 
+            // The user reported seeing different values between the actual console output
+            // (e.g., "[26157/60927] 3h15m51.62s 2.76s[wait-local]:") and the form display
+            // (e.g., "[328/379] 3m41s") because this method generates random test data.
+            //
+            // For real terminal output monitoring, you would need to implement:
+            // - Windows Console API to read from console screen buffers
+            // - ETW (Event Tracing for Windows) to monitor console events  
+            // - Accessibility APIs (UI Automation) to read terminal content
+            // - Hook into the terminal's scrollback buffer using platform-specific APIs
+            // - Or use tools like ConPTY for programmatic access to terminal streams
+            //
+            // Current implementation generates random data for demonstration:
             
             await Task.Delay(100);
             

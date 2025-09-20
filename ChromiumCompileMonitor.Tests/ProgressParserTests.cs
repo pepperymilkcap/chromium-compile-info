@@ -119,7 +119,9 @@ namespace ChromiumCompileMonitor.Tests
         [InlineData("45s", 45)]
         [InlineData("300", 300)]
         [InlineData("5m", 300)]
-        public void ParseLine_VariousTimeFormats_ParsesCorrectly(string timeFormat, int expectedSeconds)
+        [InlineData("5m30.5s", 330.5)] // Test decimal seconds
+        [InlineData("1h5m30.62s", 3930.62)] // Test decimal seconds with hours
+        public void ParseLine_VariousTimeFormats_ParsesCorrectly(string timeFormat, double expectedSeconds)
         {
             // Arrange
             var input = $"[100/900] {timeFormat}";
@@ -129,7 +131,23 @@ namespace ChromiumCompileMonitor.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(expectedSeconds, result.ElapsedTime.TotalSeconds);
+            Assert.Equal(expectedSeconds, result.ElapsedTime.TotalSeconds, 2); // 2 decimal places precision
+        }
+
+        [Fact]
+        public void ParseLine_RealChromiumOutput_ParsesCorrectly()
+        {
+            // Test with real chromium compilation output format
+            var input = "[26157/60927] 3h15m51.62s 2.76s[wait-local]:";
+            
+            var result = _parser.ParseLine(input);
+            
+            Assert.NotNull(result);
+            Assert.Equal(26157, result.CompiledBlocks);
+            Assert.Equal(34770, result.RemainingBlocks); // 60927 - 26157
+            Assert.Equal(60927, result.TotalBlocks);
+            Assert.Equal(42.9, result.PercentageCompleted, 1); // 26157/60927 * 100
+            Assert.Equal(11751.62, result.ElapsedTime.TotalSeconds, 2); // 3h15m51.62s
         }
     }
 }
