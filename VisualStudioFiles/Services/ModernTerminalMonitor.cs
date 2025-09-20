@@ -157,7 +157,20 @@ namespace ChromiumCompileMonitor.Services
             {
                 if (_monitoredTerminalHandle == IntPtr.Zero)
                     return string.Empty;
+                
+                // Use Task.Run for CPU-bound work
+                return await Task.Run(() => GetTerminalContentSync());
+            }
+            catch (Exception)
+            {
+                return string.Empty;
+            }
+        }
 
+        private string GetTerminalContentSync()
+        {
+            try
+            {
                 // Use GetWindowText as primary method
                 var buffer = new StringBuilder(32768);
                 GetWindowText(_monitoredTerminalHandle, buffer, buffer.Capacity);
@@ -189,6 +202,11 @@ namespace ChromiumCompileMonitor.Services
         }
 
         private async Task<string> GetTerminalContentViaScreenCapture(IntPtr windowHandle)
+        {
+            return await Task.Run(() => GetScreenCaptureContentSync(windowHandle));
+        }
+
+        private string GetScreenCaptureContentSync(IntPtr windowHandle)
         {
             try
             {
