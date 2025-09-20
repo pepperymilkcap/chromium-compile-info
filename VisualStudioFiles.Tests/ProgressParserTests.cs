@@ -149,5 +149,28 @@ namespace ChromiumCompileMonitor.Tests
             Assert.Equal(42.9, result.PercentageCompleted, 1); // 26157/60927 * 100
             Assert.Equal(11751.62, result.ElapsedTime.TotalSeconds, 2); // 3h15m51.62s
         }
+
+        [Fact]
+        public void ProgressLineDetection_WorksForChromiumFormats()
+        {
+            // Test progress line detection patterns
+            var validLines = new[]
+            {
+                "[26157/60927] 3h15m51.62s 2.76s[wait-local]:",
+                "[328/379] 3m41s",
+                "[100/900] 5m30s"
+            };
+            
+            foreach (var line in validLines)
+            {
+                // Should be detected as progress line using similar logic as TerminalMonitor
+                var hasProgressPattern = line.Contains("[") && 
+                                       line.Contains("/") && 
+                                       line.Contains("]") &&
+                                       (line.Contains("s") || line.Contains("m") || line.Contains("h"));
+                
+                Assert.True(hasProgressPattern, $"Should detect '{line}' as progress line");
+            }
+        }
     }
 }

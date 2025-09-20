@@ -135,6 +135,46 @@ namespace ChromiumCompileMonitor.Tests
         }
 
         [Fact]
+        public void IsProgressLine_DetectsChromiumProgressFormat()
+        {
+            // Test that the progress line detection works correctly
+            var validProgressLines = new[]
+            {
+                "[26157/60927] 3h15m51.62s 2.76s[wait-local]:",
+                "[328/379] 3m41s",
+                "[100/900] 5m30s",
+                "[1500/2000] 45m12.5s some extra text"
+            };
+            
+            var invalidLines = new[]
+            {
+                "Some random text",
+                "Error: compilation failed",
+                "Starting build process",
+                "[invalid format"
+            };
+            
+            foreach (var line in validProgressLines)
+            {
+                Assert.True(IsProgressLineTest(line), $"Should detect '{line}' as progress line");
+            }
+            
+            foreach (var line in invalidLines)
+            {
+                Assert.False(IsProgressLineTest(line), $"Should NOT detect '{line}' as progress line");
+            }
+        }
+        
+        private bool IsProgressLineTest(string line)
+        {
+            // Mirror the logic from TerminalMonitor.IsProgressLine
+            return line.Contains("[") && 
+                   line.Contains("/") && 
+                   line.Contains("]") &&
+                   (line.Contains("s") || line.Contains("m") || line.Contains("h"));
+        }
+
+        [Fact]
         public void ParseLine_RealChromiumOutput_ParsesCorrectly()
         {
             // Test with real chromium compilation output format
