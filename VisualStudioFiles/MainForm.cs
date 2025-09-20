@@ -290,11 +290,13 @@ namespace ChromiumCompileMonitor
         {
             try
             {
+                // Ensure UI is fully initialized before starting async operations
+                await Task.Delay(100); // Short delay to ensure UI components are ready
                 await RefreshTerminals();
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"Error during startup: {ex.Message}";
+                if (_statusLabel != null) _statusLabel.Text = $"Error during startup: {ex.Message}";
                 MessageBox.Show($"Error during application startup: {ex.Message}", "Startup Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -372,36 +374,39 @@ namespace ChromiumCompileMonitor
         {
             try
             {
-                _statusLabel.Text = "Scanning for terminal windows...";
-                _refreshButton.Enabled = false;
+                if (_statusLabel != null) _statusLabel.Text = "Scanning for terminal windows...";
+                if (_refreshButton != null) _refreshButton.Enabled = false;
                 
                 var terminals = await _terminalMonitor.GetAvailableTerminalsAsync();
                 _availableTerminals = terminals;
-                _terminalComboBox.DataSource = null;
-                _terminalComboBox.DataSource = _availableTerminals;
+                if (_terminalComboBox != null)
+                {
+                    _terminalComboBox.DataSource = null;
+                    _terminalComboBox.DataSource = _availableTerminals;
+                }
                 
                 if (terminals.Any())
                 {
-                    _statusLabel.Text = $"Found {terminals.Count} terminal window(s)";
-                    if (_selectedTerminal == null && _terminalComboBox.Items.Count > 0)
+                    if (_statusLabel != null) _statusLabel.Text = $"Found {terminals.Count} terminal window(s)";
+                    if (_selectedTerminal == null && _terminalComboBox != null && _terminalComboBox.Items.Count > 0)
                     {
                         _terminalComboBox.SelectedIndex = 0;
                     }
                 }
                 else
                 {
-                    _statusLabel.Text = "No terminal windows found";
+                    if (_statusLabel != null) _statusLabel.Text = "No terminal windows found";
                 }
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"Error scanning terminals: {ex.Message}";
+                if (_statusLabel != null) _statusLabel.Text = $"Error scanning terminals: {ex.Message}";
                 MessageBox.Show($"Error scanning for terminals: {ex.Message}", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                _refreshButton.Enabled = true;
+                if (_refreshButton != null) _refreshButton.Enabled = true;
             }
         }
 
@@ -417,22 +422,25 @@ namespace ChromiumCompileMonitor
             try
             {
                 _monitoringCancellationTokenSource = new CancellationTokenSource();
-                _statusLabel.Text = $"Starting monitoring of {_selectedTerminal.ProcessName}...";
+                if (_statusLabel != null) _statusLabel.Text = $"Starting monitoring of {_selectedTerminal.ProcessName}...";
                 
                 // Clear previous data
                 _currentProgress = null;
                 _logOutput.Clear();
                 
-                _startStopButton.Text = "Stop Monitoring";
-                _startStopButton.Enabled = true;
-                _refreshButton.Enabled = false;
-                _terminalComboBox.Enabled = false;
+                if (_startStopButton != null)
+                {
+                    _startStopButton.Text = "Stop Monitoring";
+                    _startStopButton.Enabled = true;
+                }
+                if (_refreshButton != null) _refreshButton.Enabled = false;
+                if (_terminalComboBox != null) _terminalComboBox.Enabled = false;
 
                 await _terminalMonitor.StartMonitoringAsync(_selectedTerminal, _monitoringCancellationTokenSource.Token);
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"Error starting monitoring: {ex.Message}";
+                if (_statusLabel != null) _statusLabel.Text = $"Error starting monitoring: {ex.Message}";
                 MessageBox.Show($"Error starting monitoring: {ex.Message}", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error);
                 StopMonitoring();
@@ -449,15 +457,18 @@ namespace ChromiumCompileMonitor
                 
                 _terminalMonitor.StopMonitoring();
                 
-                _statusLabel.Text = "Monitoring stopped";
-                _startStopButton.Text = "Start Monitoring";
-                _startStopButton.Enabled = true;
-                _refreshButton.Enabled = true;
-                _terminalComboBox.Enabled = true;
+                if (_statusLabel != null) _statusLabel.Text = "Monitoring stopped";
+                if (_startStopButton != null)
+                {
+                    _startStopButton.Text = "Start Monitoring";
+                    _startStopButton.Enabled = true;
+                }
+                if (_refreshButton != null) _refreshButton.Enabled = true;
+                if (_terminalComboBox != null) _terminalComboBox.Enabled = true;
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"Error stopping monitoring: {ex.Message}";
+                if (_statusLabel != null) _statusLabel.Text = $"Error stopping monitoring: {ex.Message}";
             }
         }
 
@@ -486,7 +497,7 @@ namespace ChromiumCompileMonitor
                 if (progress != null)
                 {
                     _currentProgress = progress;
-                    _statusLabel.Text = $"Monitoring - Last update: {progress.LastUpdate:HH:mm:ss}";
+                    if (_statusLabel != null) _statusLabel.Text = $"Monitoring - Last update: {progress.LastUpdate:HH:mm:ss}";
                 }
             }
             catch (Exception ex)
@@ -500,7 +511,7 @@ namespace ChromiumCompileMonitor
             try
             {
                 // Update log text box
-                if (_logTextBox.Text != _logOutput.ToString())
+                if (_logTextBox != null && _logTextBox.Text != _logOutput.ToString())
                 {
                     _logTextBox.Text = _logOutput.ToString();
                     _logTextBox.SelectionStart = _logTextBox.Text.Length;
@@ -510,38 +521,51 @@ namespace ChromiumCompileMonitor
                 if (_currentProgress != null)
                 {
                     // Update progress bar and label
-                    _progressBar.Value = Math.Min(100, Math.Max(0, (int)_currentProgress.PercentageCompleted));
-                    _progressLabel.Text = $"{_currentProgress.PercentageCompleted:F1}% Complete ({_currentProgress.CompiledBlocks}/{_currentProgress.TotalBlocks} blocks)";
+                    if (_progressBar != null)
+                        _progressBar.Value = Math.Min(100, Math.Max(0, (int)_currentProgress.PercentageCompleted));
+                    if (_progressLabel != null)
+                        _progressLabel.Text = $"{_currentProgress.PercentageCompleted:F1}% Complete ({_currentProgress.CompiledBlocks}/{_currentProgress.TotalBlocks} blocks)";
 
                     // Update time information
-                    _elapsedTimeLabel.Text = _currentProgress.ElapsedTime.ToString(@"hh\:mm\:ss");
-                    _estimatedRemainingLabel.Text = _currentProgress.EstimatedTimeRemaining.ToString(@"hh\:mm\:ss");
-                    _estimatedTotalLabel.Text = _currentProgress.EstimatedTotalTime.ToString(@"hh\:mm\:ss");
-                    _timePerBlockLabel.Text = $"{_currentProgress.TimePerBlock:F2} seconds";
-                    _lastUpdateLabel.Text = _currentProgress.LastUpdate.ToString("HH:mm:ss");
+                    if (_elapsedTimeLabel != null)
+                        _elapsedTimeLabel.Text = _currentProgress.ElapsedTime.ToString(@"hh\:mm\:ss");
+                    if (_estimatedRemainingLabel != null)
+                        _estimatedRemainingLabel.Text = _currentProgress.EstimatedTimeRemaining.ToString(@"hh\:mm\:ss");
+                    if (_estimatedTotalLabel != null)
+                        _estimatedTotalLabel.Text = _currentProgress.EstimatedTotalTime.ToString(@"hh\:mm\:ss");
+                    if (_timePerBlockLabel != null)
+                        _timePerBlockLabel.Text = $"{_currentProgress.TimePerBlock:F2} seconds";
+                    if (_lastUpdateLabel != null)
+                        _lastUpdateLabel.Text = _currentProgress.LastUpdate.ToString("HH:mm:ss");
 
                     // Update speed trend with color
-                    _speedTrendLabel.Text = _currentProgress.SpeedTrend;
-                    _speedTrendLabel.ForeColor = _currentProgress.SpeedTrend switch
+                    if (_speedTrendLabel != null)
                     {
-                        "Sped up" => Color.Green,
-                        "Slowed down" => Color.Red,
-                        "Steady" => Color.Blue,
-                        _ => Color.Black
-                    };
+                        _speedTrendLabel.Text = _currentProgress.SpeedTrend;
+                        _speedTrendLabel.ForeColor = _currentProgress.SpeedTrend switch
+                        {
+                            "Sped up" => Color.Green,
+                            "Slowed down" => Color.Red,
+                            "Steady" => Color.Blue,
+                            _ => Color.Black
+                        };
+                    }
                 }
                 else
                 {
                     // Reset to default values
-                    _progressBar.Value = 0;
-                    _progressLabel.Text = "0.0% Complete (0/0 blocks)";
-                    _elapsedTimeLabel.Text = "00:00:00";
-                    _estimatedRemainingLabel.Text = "00:00:00";
-                    _estimatedTotalLabel.Text = "00:00:00";
-                    _timePerBlockLabel.Text = "0.00 seconds";
-                    _speedTrendLabel.Text = "Unknown";
-                    _speedTrendLabel.ForeColor = Color.Black;
-                    _lastUpdateLabel.Text = "--:--:--";
+                    if (_progressBar != null) _progressBar.Value = 0;
+                    if (_progressLabel != null) _progressLabel.Text = "0.0% Complete (0/0 blocks)";
+                    if (_elapsedTimeLabel != null) _elapsedTimeLabel.Text = "00:00:00";
+                    if (_estimatedRemainingLabel != null) _estimatedRemainingLabel.Text = "00:00:00";
+                    if (_estimatedTotalLabel != null) _estimatedTotalLabel.Text = "00:00:00";
+                    if (_timePerBlockLabel != null) _timePerBlockLabel.Text = "0.00 seconds";
+                    if (_speedTrendLabel != null)
+                    {
+                        _speedTrendLabel.Text = "Unknown";
+                        _speedTrendLabel.ForeColor = Color.Black;
+                    }
+                    if (_lastUpdateLabel != null) _lastUpdateLabel.Text = "--:--:--";
                 }
             }
             catch (Exception)
