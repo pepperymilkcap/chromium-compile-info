@@ -13,4 +13,8 @@
     <PackageReference Include="System.Management" Version="7.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+  </ItemGroup>
+
 </Project>

@@ -6,7 +6,7 @@ namespace ChromiumCompileMonitor.Services
 {
     public class ProgressParser
     {
-        // Pattern to match [compiled_blocks/remaining_blocks] elapsed_time
+        // Pattern to match [compiled_blocks/total_blocks] elapsed_time
         private readonly Regex _progressPattern = new Regex(
             @"\[(\d+)/(\d+)\]\s*(\S+)",
             RegexOptions.Compiled);
@@ -25,7 +25,7 @@ namespace ChromiumCompileMonitor.Services
             try
             {
                 var compiledBlocks = int.Parse(match.Groups[1].Value);
-                var remainingBlocks = int.Parse(match.Groups[2].Value);
+                var totalBlocks = int.Parse(match.Groups[2].Value);
                 var elapsedTimeStr = match.Groups[3].Value;
 
                 var elapsedTime = ParseElapsedTime(elapsedTimeStr);
@@ -35,7 +35,7 @@ namespace ChromiumCompileMonitor.Services
                 var progress = new CompileProgress
                 {
                     CompiledBlocks = compiledBlocks,
-                    RemainingBlocks = remainingBlocks,
+                    RemainingBlocks = totalBlocks - compiledBlocks,
                     ElapsedTime = elapsedTime.Value,
                     LastUpdate = DateTime.Now
                 };
@@ -81,25 +81,29 @@ namespace ChromiumCompileMonitor.Services
             try
             {
                 // Handle various time formats
-                // HhMmSs format (e.g., "1h30m45s") - Check this FIRST
-                var hoursMinutesSecondsPattern = new Regex(@"(\d+)h(\d+)m(\d+)s");
+                // HhMmSs format (e.g., "1h30m45s" or "1h30m45.62s") - Check this FIRST
+                var hoursMinutesSecondsPattern = new Regex(@"(\d+)h(\d+)m([\d.]+)s");
                 var match = hoursMinutesSecondsPattern.Match(timeStr);
                 if (match.Success)
                 {
                     var hours = int.Parse(match.Groups[1].Value);
                     var minutes = int.Parse(match.Groups[2].Value);
-                    var seconds = int.Parse(match.Groups[3].Value);
-                    return new TimeSpan(hours, minutes, seconds);
+                    var secondsValue = double.Parse(match.Groups[3].Value);
+                    var seconds = (int)secondsValue;
+                    var milliseconds = (int)((secondsValue - seconds) * 1000);
+                    return new TimeSpan(0, hours, minutes, seconds, milliseconds);
                 }
 
-                // XmYs format (e.g., "5m30s")
-                var minutesSecondsPattern = new Regex(@"(\d+)m(\d+)s");
+                // XmYs format (e.g., "5m30s" or "5m30.5s")
+                var minutesSecondsPattern = new Regex(@"(\d+)m([\d.]+)s");
                 match = minutesSecondsPattern.Match(timeStr);
                 if (match.Success)
                 {
                     var minutes = int.Parse(match.Groups[1].Value);
-                    var seconds = int.Parse(match.Groups[2].Value);
-                    return new TimeSpan(0, minutes, seconds);
+                    var secondsValue = double.Parse(match.Groups[2].Value);
+                    var seconds = (int)secondsValue;
+                    var milliseconds = (int)((secondsValue - seconds) * 1000);
+                    return new TimeSpan(0, 0, minutes, seconds, milliseconds);
                 }
 
                 // Just minutes format (e.g., "5m")

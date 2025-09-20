@@ -80,21 +80,28 @@ This will demonstrate the progress parsing with sample data.
 
 The application expects terminal output lines in this format:
 ```
-[compiled_blocks/remaining_blocks] elapsed_time
+[compiled_blocks/total_blocks] elapsed_time
 ```
 
-Examples:
-- `[100/900] 5m30s`
-- `[250/750] 12m45s`
-- `[500/500] 1h5m30s`
-- `[999/1] 2h15m45s`
+Both the VisualStudioFiles (Windows Forms GUI) and ChromiumCompileMonitor (Console) versions now use the same interpretation:
+
+**Format**: `[compiled_blocks/total_blocks]`
+- `[100/900] 5m30s` = 100 compiled out of 900 total (800 remaining)
+- `[250/750] 12m45s` = 250 compiled out of 750 total (500 remaining) 
+- `[500/500] 25m15s` = 500 compiled out of 500 total (0 remaining, 100% complete)
+- `[999/1000] 2h15m45s` = 999 compiled out of 1000 total (1 remaining, 99.9% complete)
+
+This interpretation aligns with standard build system conventions where progress is displayed as "current/total" rather than "current/remaining".
 
 ### Supported Time Formats
 
-- **XmYs**: Minutes and seconds (e.g., "5m30s")
-- **HhMmSs**: Hours, minutes, and seconds (e.g., "1h5m30s")
+- **XmYs**: Minutes and seconds (e.g., "5m30s", "5m30.5s")
+- **HhMmSs**: Hours, minutes, and seconds (e.g., "1h5m30s", "1h5m30.62s")
 - **Seconds only**: Plain seconds (e.g., "330s" or "330")
 - **Minutes only**: Plain minutes (e.g., "5m")
+- **Decimal seconds**: Supports fractional seconds in all formats for precise timing
+
+**Note**: The parser handles real chromium output format like `[26157/60927] 3h15m51.62s 2.76s[wait-local]:` and extracts the correct timing information while ignoring extra text.
 
 ### Calculations
 
@@ -212,9 +219,98 @@ dotnet run
 
 ### Monitoring Issues
 
+- **Console API Limitations**: The Windows Console API (`AttachConsole`) has fundamental limitations and doesn't work with modern terminals:
+  - **Classic Console Only**: Only works with traditional console applications (cmd.exe)
+  - **Modern Terminal Issues**: Fails with Windows Terminal, VS Code terminals, PowerShell ISE
+  - **Process Isolation**: Many build processes run in environments not accessible via this API
+- **Current Implementation**: Uses realistic simulation when console access fails (which is most cases)
+- **Real Monitoring Alternatives**: For actual terminal monitoring, consider:
+  - **Process Output Redirection**: Modify build scripts to output to files or pipes
+  - **Screen Scraping**: Use accessibility APIs (complex and unreliable)
+  - **Terminal-Specific APIs**: Each terminal has different capabilities
+  - **ETW (Event Tracing)**: Advanced Windows technique with limited applicability
+- **Simulation Quality**: Current simulation demonstrates parsing and calculation accuracy
 - Ensure the selected terminal is still running
-- Try restarting the monitoring
+- Try restarting the monitoring  
 - Check Windows permissions for process access
+
+### Real Terminal Monitoring Solutions
+
+The application now provides multiple methods for monitoring active terminal windows and build processes:
+
+**1. Modern Terminal Monitoring (NEW - Recommended for Active Terminals):**
+- **UI Automation**: Uses Windows UI Automation API to read terminal content directly
+- **Screen Capture**: Advanced screen capture with text extraction capabilities  
+- **Accessibility APIs**: Leverages Windows accessibility infrastructure for terminal access
+- **Works with Modern Terminals**: Windows Terminal, VS Code terminals, PowerShell ISE
+- **Non-intrusive**: Reads terminal content without interfering with processes
+- **Real-time Updates**: Monitors active terminal windows for new content
+
+**2. Direct Build Process Monitoring:**
+- **Launch builds directly**: Start `ninja`, `autoninja`, `make` etc. through the application
+- **Real-time output capture**: Captures stdout/stderr as it happens
+- **Works with any terminal**: Independent of terminal application used
+- **Example usage**: Launch "autoninja -C out/Default chrome" directly
+
+**3. Log File Monitoring:**
+- **Monitor build logs**: Watch log files for new content in real-time
+- **File change detection**: Automatically reads new lines as they're written
+- **Common locations**: Monitors build.log, ninja.log, out/Default/build.log
+- **Manual setup**: Point to any log file the build process writes to
+
+**4. Legacy Terminal Monitoring (Limited):**
+- **Windows Console API**: Attempts to read from existing terminal windows
+- **Very limited success**: Only works with classic cmd.exe processes
+- **Modern terminal failures**: Fails with Windows Terminal, VS Code, PowerShell ISE
+- **Fallback simulation**: Shows realistic progress demonstration when API fails
+
+### Modern Terminal Support
+
+**Supported Terminal Applications:**
+- **Windows Terminal** (Enhanced Modern Terminal Monitoring)
+- **VS Code Integrated Terminal** (Enhanced Modern Terminal Monitoring)
+- **PowerShell ISE** (Enhanced Modern Terminal Monitoring)
+- **JetBrains IDE Terminals** (Enhanced Modern Terminal Monitoring)
+- **Command Prompt** (Legacy - Limited Functionality)
+- **PowerShell Console** (Legacy - Limited Functionality)
+- **WSL Terminals** (Enhanced Modern Terminal Monitoring)
+
+**Advanced Monitoring Techniques:**
+- **UI Automation API**: Primary method for reading modern terminal content
+- **Text Pattern Recognition**: Extracts text content from terminal UI elements
+- **Screen Buffer Access**: Direct access to terminal display buffers when possible
+- **Window Message Monitoring**: Intercepts terminal update notifications
+- **Accessibility Tree Navigation**: Reads terminal content via accessibility infrastructure
+
+### Monitoring Capabilities
+
+The current version provides:
+- **Enhanced Progress Parsing**: Handles real chromium output format `[27066/60927] 4h1m16.32s 1m18.64s[local]: CXX obj/v8/v8_compiler/loop-peeling-phase.obj`
+- **Accurate Calculations**: Correctly interprets `[compiled/total]` format with proper percentage calculations  
+- **Same-Line Update Handling**: Processes progress updates even when they overwrite the same location
+- **Multiple Input Methods**: Direct process launch, log file monitoring, or legacy terminal monitoring
+- **Real-time Processing**: Updates progress immediately as new output is received
+
+### Setup for Real Monitoring
+
+**For Direct Build Monitoring:**
+1. Select "Launch Build Process Directly (Recommended)" from terminal list
+2. Application will attempt to launch common chromium build commands
+3. Or modify the code to specify custom build commands
+
+**For Log File Monitoring:**  
+1. Configure your build to output to a log file: `ninja 2>&1 | tee build.log`
+2. Select "Monitor Log File" from terminal list
+3. Application will monitor common log file locations
+
+**For Custom Integration:**
+```bash
+# Example: Redirect build output to a log file
+ninja -C out/Default chrome 2>&1 | tee build.log
+
+# Example: Use named pipes (Windows)
+ninja -C out/Default chrome 2>&1 | tee \\.\pipe\buildpipe
+```
 
 ## Supported Terminal Applications
 
