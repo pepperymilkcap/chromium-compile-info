@@ -236,25 +236,51 @@ dotnet run
 
 ### Real Terminal Monitoring Solutions
 
-The application now provides multiple methods for actual build monitoring:
+The application now provides multiple methods for monitoring active terminal windows and build processes:
 
-**1. Direct Build Process Monitoring (Recommended):**
+**1. Modern Terminal Monitoring (NEW - Recommended for Active Terminals):**
+- **UI Automation**: Uses Windows UI Automation API to read terminal content directly
+- **Screen Capture**: Advanced screen capture with text extraction capabilities  
+- **Accessibility APIs**: Leverages Windows accessibility infrastructure for terminal access
+- **Works with Modern Terminals**: Windows Terminal, VS Code terminals, PowerShell ISE
+- **Non-intrusive**: Reads terminal content without interfering with processes
+- **Real-time Updates**: Monitors active terminal windows for new content
+
+**2. Direct Build Process Monitoring:**
 - **Launch builds directly**: Start `ninja`, `autoninja`, `make` etc. through the application
 - **Real-time output capture**: Captures stdout/stderr as it happens
 - **Works with any terminal**: Independent of terminal application used
 - **Example usage**: Launch "autoninja -C out/Default chrome" directly
 
-**2. Log File Monitoring:**
+**3. Log File Monitoring:**
 - **Monitor build logs**: Watch log files for new content in real-time
 - **File change detection**: Automatically reads new lines as they're written
 - **Common locations**: Monitors build.log, ninja.log, out/Default/build.log
 - **Manual setup**: Point to any log file the build process writes to
 
-**3. Legacy Terminal Monitoring (Limited):**
+**4. Legacy Terminal Monitoring (Limited):**
 - **Windows Console API**: Attempts to read from existing terminal windows
 - **Very limited success**: Only works with classic cmd.exe processes
 - **Modern terminal failures**: Fails with Windows Terminal, VS Code, PowerShell ISE
 - **Fallback simulation**: Shows realistic progress demonstration when API fails
+
+### Modern Terminal Support
+
+**Supported Terminal Applications:**
+- **Windows Terminal** (Enhanced Modern Terminal Monitoring)
+- **VS Code Integrated Terminal** (Enhanced Modern Terminal Monitoring)
+- **PowerShell ISE** (Enhanced Modern Terminal Monitoring)
+- **JetBrains IDE Terminals** (Enhanced Modern Terminal Monitoring)
+- **Command Prompt** (Legacy - Limited Functionality)
+- **PowerShell Console** (Legacy - Limited Functionality)
+- **WSL Terminals** (Enhanced Modern Terminal Monitoring)
+
+**Advanced Monitoring Techniques:**
+- **UI Automation API**: Primary method for reading modern terminal content
+- **Text Pattern Recognition**: Extracts text content from terminal UI elements
+- **Screen Buffer Access**: Direct access to terminal display buffers when possible
+- **Window Message Monitoring**: Intercepts terminal update notifications
+- **Accessibility Tree Navigation**: Reads terminal content via accessibility infrastructure
 
 ### Monitoring Capabilities
 

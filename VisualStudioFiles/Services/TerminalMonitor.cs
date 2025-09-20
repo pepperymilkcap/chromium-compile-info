@@ -111,12 +111,16 @@ namespace ChromiumCompileMonitor.Services
         private readonly HashSet<string> _seenLines = new();
         private readonly List<string> _lastConsoleContent = new();
         private readonly ProcessMonitor _processMonitor = new();
+        private readonly ModernTerminalMonitor _modernTerminalMonitor = new();
 
         public TerminalMonitor()
         {
             // Set up process monitor event handlers
             _processMonitor.OutputLineReceived += OnProcessOutputReceived;
             _processMonitor.ErrorLineReceived += OnProcessErrorReceived;
+            
+            // Set up modern terminal monitor event handlers
+            _modernTerminalMonitor.LineReceived += OnModernTerminalLineReceived;
         }
 
         /// <summary>
@@ -213,6 +217,30 @@ namespace ChromiumCompileMonitor.Services
             NewLineReceived?.Invoke(line);
         }
 
+        private void OnProcessErrorReceived(string line)
+        {
+            // Error lines might also contain progress information in some build systems
+            if (IsProgressLine(line))
+            {
+                ProcessUpdatedLine(line);
+            }
+            
+            // Forward error lines as well
+            NewLineReceived?.Invoke($"ERROR: {line}");
+        }
+
+        private void OnModernTerminalLineReceived(string line)
+        {
+            // Process lines from modern terminal monitoring
+            if (IsProgressLine(line))
+            {
+                ProcessUpdatedLine(line);
+            }
+            
+            // Forward all lines to listeners
+            NewLineReceived?.Invoke(line);
+        }
+
         /// <summary>
         /// Gets available terminal windows for legacy terminal monitoring.
         /// For reliable monitoring, use StartBuildMonitoringAsync instead.
@@ -286,11 +314,21 @@ namespace ChromiumCompileMonitor.Services
                             title.Contains("Ubuntu", StringComparison.OrdinalIgnoreCase) ||
                             title.Contains("WSL", StringComparison.OrdinalIgnoreCase))
                         {
+                            // Modern terminals get enhanced monitoring
+                            var isModernTerminal = processName.Equals("WindowsTerminal", StringComparison.OrdinalIgnoreCase) ||
+                                                 processName.Equals("wt", StringComparison.OrdinalIgnoreCase) ||
+                                                 title.Contains("Windows Terminal", StringComparison.OrdinalIgnoreCase) ||
+                                                 title.Contains("VS Code", StringComparison.OrdinalIgnoreCase);
+                            
+                            var displayTitle = isModernTerminal 
+                                ? title + " (Enhanced Modern Terminal Monitoring)" 
+                                : title + " (Legacy - Limited Functionality)";
+                            
                             terminals.Add(new TerminalInfo
                             {
                                 ProcessId = (int)processId,
                                 ProcessName = processName,
-                                WindowTitle = title + " (Legacy - Limited Functionality)",
+                                WindowTitle = displayTitle,
                                 WindowHandle = handle
                             });
                         }
@@ -373,6 +411,12 @@ namespace ChromiumCompileMonitor.Services
             });
         }
 
+        /// <summary>
+        /// Starts monitoring an active terminal window using advanced techniques for modern terminals.
+        /// This is the primary method for monitoring existing terminal processes.
+        /// </summary>
+        /// <param name="terminal">Terminal information</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         public async Task StartMonitoringAsync(TerminalInfo terminal, CancellationToken cancellationToken = default)
         {
             // Handle special monitoring options
@@ -421,6 +465,22 @@ namespace ChromiumCompileMonitor.Services
                 // If no log files found, create a demo log file monitor
                 await StartLogFileMonitoringAsync("build.log", cancellationToken);
                 return;
+            }
+            
+            // Modern Terminal Monitoring (Primary for active terminals)
+            if (terminal.WindowHandle != IntPtr.Zero)
+            {
+                StopMonitoring();
+                
+                // Try modern terminal monitoring first
+                var modernSuccess = await _modernTerminalMonitor.StartMonitoringAsync(terminal.WindowHandle, cancellationToken);
+                
+                if (modernSuccess)
+                {
+                    _monitoredTerminal = terminal;
+                    _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    return;
+                }
             }
             
             // Legacy terminal monitoring (limited functionality)
@@ -687,6 +747,7 @@ namespace ChromiumCompileMonitor.Services
             _cancellationTokenSource = null;
             
             _processMonitor.StopMonitoring();
+            _modernTerminalMonitor.StopMonitoring();
             
             _monitoredTerminal = null;
             _seenLines.Clear();
@@ -696,6 +757,7 @@ namespace ChromiumCompileMonitor.Services
         public bool IsMonitoring => (_monitoredTerminal != null && 
                                    _cancellationTokenSource != null && 
                                    !_cancellationTokenSource.Token.IsCancellationRequested) ||
-                                   _processMonitor.IsMonitoring;
+                                   _processMonitor.IsMonitoring ||
+                                   _modernTerminalMonitor.IsMonitoring;
     }
 }
