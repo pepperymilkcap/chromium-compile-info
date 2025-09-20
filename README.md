@@ -234,21 +234,57 @@ dotnet run
 - Try restarting the monitoring  
 - Check Windows permissions for process access
 
-### Real Terminal Output Support vs Demonstration
+### Real Terminal Monitoring Solutions
+
+The application now provides multiple methods for actual build monitoring:
+
+**1. Direct Build Process Monitoring (Recommended):**
+- **Launch builds directly**: Start `ninja`, `autoninja`, `make` etc. through the application
+- **Real-time output capture**: Captures stdout/stderr as it happens
+- **Works with any terminal**: Independent of terminal application used
+- **Example usage**: Launch "autoninja -C out/Default chrome" directly
+
+**2. Log File Monitoring:**
+- **Monitor build logs**: Watch log files for new content in real-time
+- **File change detection**: Automatically reads new lines as they're written
+- **Common locations**: Monitors build.log, ninja.log, out/Default/build.log
+- **Manual setup**: Point to any log file the build process writes to
+
+**3. Legacy Terminal Monitoring (Limited):**
+- **Windows Console API**: Attempts to read from existing terminal windows
+- **Very limited success**: Only works with classic cmd.exe processes
+- **Modern terminal failures**: Fails with Windows Terminal, VS Code, PowerShell ISE
+- **Fallback simulation**: Shows realistic progress demonstration when API fails
+
+### Monitoring Capabilities
 
 The current version provides:
-- **Enhanced Progress Parsing**: Handles real chromium output format `[26157/60927] 3h15m51.62s 2.76s[wait-local]:`
-- **Accurate Calculations**: Correctly interprets `[compiled/total]` format with proper percentage calculations
+- **Enhanced Progress Parsing**: Handles real chromium output format `[27066/60927] 4h1m16.32s 1m18.64s[local]: CXX obj/v8/v8_compiler/loop-peeling-phase.obj`
+- **Accurate Calculations**: Correctly interprets `[compiled/total]` format with proper percentage calculations  
 - **Same-Line Update Handling**: Processes progress updates even when they overwrite the same location
-- **Windows Console API Attempts**: Tries to read real console when possible
-- **Realistic Simulation**: When console access fails, provides demonstration that mimics real patterns
-- **Pattern Recognition**: Identifies and processes chromium-style progress lines
+- **Multiple Input Methods**: Direct process launch, log file monitoring, or legacy terminal monitoring
+- **Real-time Processing**: Updates progress immediately as new output is received
 
-**Current Reality:**
-- **Console API Success Rate**: Very low with modern development environments
-- **Simulation Purpose**: Demonstrates the parsing and calculation capabilities
-- **Real Use Case**: Copy/paste actual terminal output for manual progress tracking
-- **Future Enhancement**: Requires integration with build tools for process output redirection
+### Setup for Real Monitoring
+
+**For Direct Build Monitoring:**
+1. Select "Launch Build Process Directly (Recommended)" from terminal list
+2. Application will attempt to launch common chromium build commands
+3. Or modify the code to specify custom build commands
+
+**For Log File Monitoring:**  
+1. Configure your build to output to a log file: `ninja 2>&1 | tee build.log`
+2. Select "Monitor Log File" from terminal list
+3. Application will monitor common log file locations
+
+**For Custom Integration:**
+```bash
+# Example: Redirect build output to a log file
+ninja -C out/Default chrome 2>&1 | tee build.log
+
+# Example: Use named pipes (Windows)
+ninja -C out/Default chrome 2>&1 | tee \\.\pipe\buildpipe
+```
 
 ## Supported Terminal Applications
 

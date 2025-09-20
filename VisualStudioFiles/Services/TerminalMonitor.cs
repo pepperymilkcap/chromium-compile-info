@@ -25,7 +25,7 @@ namespace ChromiumCompileMonitor.Services
 
     public class TerminalMonitor
     {
-        #region Windows API Declarations
+        #region Windows API Declarations (for fallback compatibility)
 
         [DllImport("user32.dll")]
         private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
@@ -110,8 +110,200 @@ namespace ChromiumCompileMonitor.Services
         private CancellationTokenSource? _cancellationTokenSource;
         private readonly HashSet<string> _seenLines = new();
         private readonly List<string> _lastConsoleContent = new();
+        private readonly ProcessMonitor _processMonitor = new();
 
+        public TerminalMonitor()
+        {
+            // Set up process monitor event handlers
+            _processMonitor.OutputLineReceived += OnProcessOutputReceived;
+            _processMonitor.ErrorLineReceived += OnProcessErrorReceived;
+        }
+
+        /// <summary>
+        /// Starts monitoring a build process by launching it directly and capturing its output.
+        /// This is the most reliable method for real-time build monitoring.
+        /// </summary>
+        /// <param name="executable">Build executable (e.g., "ninja", "autoninja", "make")</param>
+        /// <param name="arguments">Command line arguments</param>
+        /// <param name="workingDirectory">Working directory for the build</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>True if monitoring started successfully</returns>
+        public async Task<bool> StartBuildMonitoringAsync(
+            string executable, 
+            string arguments = "", 
+            string workingDirectory = "", 
+            CancellationToken cancellationToken = default)
+        {
+            StopMonitoring();
+            
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            
+            var success = await _processMonitor.StartProcessMonitoringAsync(
+                executable, arguments, workingDirectory, _cancellationTokenSource.Token);
+                
+            if (success)
+            {
+                // Create a dummy TerminalInfo for the process
+                _monitoredTerminal = new TerminalInfo
+                {
+                    ProcessId = 0, // Will be set by process monitor
+                    ProcessName = executable,
+                    WindowTitle = $"Build Process: {executable} {arguments}",
+                    WindowHandle = IntPtr.Zero
+                };
+            }
+            
+            return success;
+        }
+
+        /// <summary>
+        /// Starts monitoring a log file for build progress updates.
+        /// Useful when the build process outputs progress to a file.
+        /// </summary>
+        /// <param name="logFilePath">Path to the log file</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        public async Task StartLogFileMonitoringAsync(string logFilePath, CancellationToken cancellationToken = default)
+        {
+            StopMonitoring();
+            
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            
+            await _processMonitor.StartFileMonitoringAsync(logFilePath, _cancellationTokenSource.Token);
+            
+            _monitoredTerminal = new TerminalInfo
+            {
+                ProcessId = 0,
+                ProcessName = "FileMonitor",
+                WindowTitle = $"Log File: {Path.GetFileName(logFilePath)}",
+                WindowHandle = IntPtr.Zero
+            };
+        }
+
+        /// <summary>
+        /// Starts monitoring a named pipe for build progress updates.
+        /// </summary>
+        /// <param name="pipeName">Name of the named pipe</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        public async Task StartPipeMonitoringAsync(string pipeName, CancellationToken cancellationToken = default)
+        {
+            StopMonitoring();
+            
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            
+            await _processMonitor.StartPipeMonitoringAsync(pipeName, _cancellationTokenSource.Token);
+            
+            _monitoredTerminal = new TerminalInfo
+            {
+                ProcessId = 0,
+                ProcessName = "PipeMonitor",
+                WindowTitle = $"Named Pipe: {pipeName}",
+                WindowHandle = IntPtr.Zero
+            };
+        }
+
+        private void OnProcessOutputReceived(string line)
+        {
+            // Process the line for progress information
+            if (IsProgressLine(line))
+            {
+                ProcessUpdatedLine(line);
+            }
+            
+            // Also forward all lines to any listeners
+            NewLineReceived?.Invoke(line);
+        }
+
+        /// <summary>
+        /// Gets available terminal windows for legacy terminal monitoring.
+        /// For reliable monitoring, use StartBuildMonitoringAsync instead.
+        /// </summary>
         public async Task<List<TerminalInfo>> GetAvailableTerminalsAsync()
+        {
+            return await Task.Run(() =>
+            {
+                var terminals = new List<TerminalInfo>();
+                var windows = new List<(IntPtr handle, string title, uint processId)>();
+
+                // Add option for direct build monitoring
+                terminals.Add(new TerminalInfo
+                {
+                    ProcessId = -1,
+                    ProcessName = "DirectBuild",
+                    WindowTitle = "Launch Build Process Directly (Recommended)",
+                    WindowHandle = IntPtr.Zero
+                });
+
+                // Add option for log file monitoring
+                terminals.Add(new TerminalInfo
+                {
+                    ProcessId = -2,
+                    ProcessName = "LogFile",
+                    WindowTitle = "Monitor Log File",
+                    WindowHandle = IntPtr.Zero
+                });
+
+                // Enumerate all visible windows for legacy support
+                EnumWindows((hWnd, lParam) =>
+                {
+                    if (!IsWindowVisible(hWnd))
+                        return true;
+
+                    var length = GetWindowTextLength(hWnd);
+                    if (length == 0)
+                        return true;
+
+                    var builder = new StringBuilder(length + 1);
+                    GetWindowText(hWnd, builder, builder.Capacity);
+                    var title = builder.ToString();
+
+                    if (string.IsNullOrWhiteSpace(title))
+                        return true;
+
+                    GetWindowThreadProcessId(hWnd, out var processId);
+                    windows.Add((hWnd, title, processId));
+
+                    return true;
+                }, IntPtr.Zero);
+
+                // Filter for terminal-like processes
+                var terminalProcessNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "cmd", "powershell", "WindowsTerminal", "wt", "ConEmu", "ConEmu64",
+                    "mintty", "bash", "ubuntu", "kali", "debian", "opensuse"
+                };
+
+                foreach (var (handle, title, processId) in windows)
+                {
+                    try
+                    {
+                        var process = Process.GetProcessById((int)processId);
+                        var processName = process.ProcessName;
+
+                        if (terminalProcessNames.Contains(processName) || 
+                            title.Contains("Command Prompt", StringComparison.OrdinalIgnoreCase) ||
+                            title.Contains("PowerShell", StringComparison.OrdinalIgnoreCase) ||
+                            title.Contains("Terminal", StringComparison.OrdinalIgnoreCase) ||
+                            title.Contains("Ubuntu", StringComparison.OrdinalIgnoreCase) ||
+                            title.Contains("WSL", StringComparison.OrdinalIgnoreCase))
+                        {
+                            terminals.Add(new TerminalInfo
+                            {
+                                ProcessId = (int)processId,
+                                ProcessName = processName,
+                                WindowTitle = title + " (Legacy - Limited Functionality)",
+                                WindowHandle = handle
+                            });
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore processes we can't access
+                    }
+                }
+
+                return terminals.DistinctBy(t => t.ProcessId).ToList();
+            });
+        }
         {
             return await Task.Run(() =>
             {
@@ -183,6 +375,55 @@ namespace ChromiumCompileMonitor.Services
 
         public async Task StartMonitoringAsync(TerminalInfo terminal, CancellationToken cancellationToken = default)
         {
+            // Handle special monitoring options
+            if (terminal.ProcessId == -1) // Direct Build Monitoring
+            {
+                // This would typically be configured through a UI dialog
+                // For now, provide common chromium build examples
+                var success = await StartBuildMonitoringAsync(
+                    "autoninja", 
+                    "-C out/Default chrome", 
+                    "", 
+                    cancellationToken);
+                    
+                if (!success)
+                {
+                    // Try alternative build commands
+                    success = await StartBuildMonitoringAsync(
+                        "ninja", 
+                        "-C out/Default chrome", 
+                        "", 
+                        cancellationToken);
+                }
+                
+                return;
+            }
+            else if (terminal.ProcessId == -2) // Log File Monitoring
+            {
+                // Monitor common log file locations
+                var logPaths = new[]
+                {
+                    "build.log",
+                    "ninja.log", 
+                    "out/Default/build.log",
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Temp), "build.log")
+                };
+                
+                foreach (var logPath in logPaths)
+                {
+                    if (File.Exists(logPath))
+                    {
+                        await StartLogFileMonitoringAsync(logPath, cancellationToken);
+                        return;
+                    }
+                }
+                
+                // If no log files found, create a demo log file monitor
+                await StartLogFileMonitoringAsync("build.log", cancellationToken);
+                return;
+            }
+            
+            // Legacy terminal monitoring (limited functionality)
             _monitoredTerminal = terminal;
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _seenLines.Clear();
@@ -444,13 +685,17 @@ namespace ChromiumCompileMonitor.Services
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
+            
+            _processMonitor.StopMonitoring();
+            
             _monitoredTerminal = null;
             _seenLines.Clear();
             _lastConsoleContent.Clear();
         }
 
-        public bool IsMonitoring => _monitoredTerminal != null && 
+        public bool IsMonitoring => (_monitoredTerminal != null && 
                                    _cancellationTokenSource != null && 
-                                   !_cancellationTokenSource.Token.IsCancellationRequested;
+                                   !_cancellationTokenSource.Token.IsCancellationRequested) ||
+                                   _processMonitor.IsMonitoring;
     }
 }
