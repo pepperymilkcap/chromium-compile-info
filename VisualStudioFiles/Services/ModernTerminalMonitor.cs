@@ -56,8 +56,13 @@ namespace ChromiumCompileMonitor.Services
         [DllImport("gdi32.dll")]
         private static extern bool DeleteObject(IntPtr hObject);
 
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteDC(IntPtr hdc);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumChildWindows(IntPtr hWndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
+
+        private delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT
@@ -71,17 +76,18 @@ namespace ChromiumCompileMonitor.Services
         #endregion
 
         /// <summary>
-        /// Starts monitoring a terminal window using UI Automation and other advanced techniques.
+        /// Starts monitoring a terminal window using multiple advanced techniques.
         /// </summary>
         public async Task<bool> StartMonitoringAsync(IntPtr windowHandle, CancellationToken cancellationToken = default)
         {
             try
             {
                 StopMonitoring();
+                _monitoredTerminalHandle = windowHandle;
                 _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
                 // Try multiple approaches to read terminal content
-                var success = await TryUIAutomationMonitoring(windowHandle) ||
+                var success = await TryWindowTextMonitoring(windowHandle) ||
                              await TryScreenScrapingMonitoring(windowHandle) ||
                              await TryAccessibilityMonitoring(windowHandle);
 
@@ -100,18 +106,12 @@ namespace ChromiumCompileMonitor.Services
             }
         }
 
-        private async Task<bool> TryUIAutomationMonitoring(IntPtr windowHandle)
+        private async Task<bool> TryWindowTextMonitoring(IntPtr windowHandle)
         {
             try
             {
-                // Convert window handle to AutomationElement
-                _monitoredTerminal = AutomationElement.FromHandle(windowHandle);
-                
-                if (_monitoredTerminal == null)
-                    return false;
-
-                // Test if we can read content
-                var content = await GetTerminalContentViaUIAutomation();
+                // Test if we can read content using standard Windows API
+                var content = await GetTerminalContentViaWindowsAPI();
                 return !string.IsNullOrEmpty(content);
             }
             catch (Exception)
@@ -251,7 +251,7 @@ namespace ChromiumCompileMonitor.Services
                 try
                 {
                     // Try all available methods to get current content
-                    var content = await GetTerminalContentViaUIAutomation();
+                    var content = await GetTerminalContentViaWindowsAPI();
                     
                     if (string.IsNullOrEmpty(content))
                     {
@@ -325,7 +325,7 @@ namespace ChromiumCompileMonitor.Services
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
-            _monitoredTerminal = null;
+            _monitoredTerminalHandle = IntPtr.Zero;
             _lastContent = string.Empty;
             _seenLines.Clear();
         }

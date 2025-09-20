@@ -14,12 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="UIAutomationClient">
-      <HintPath>$(SystemRoot)\Microsoft.NET\Framework64\v4.0.30319\UIAutomationClient.dll</HintPath>
-    </Reference>
-    <Reference Include="UIAutomationTypes">
-      <HintPath>$(SystemRoot)\Microsoft.NET\Framework64\v4.0.30319\UIAutomationTypes.dll</HintPath>
-    </Reference>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
   </ItemGroup>
 
 </Project>
