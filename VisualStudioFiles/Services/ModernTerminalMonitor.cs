@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Automation;
 
 namespace ChromiumCompileMonitor.Services
 {
@@ -18,7 +17,7 @@ namespace ChromiumCompileMonitor.Services
         public event Action<string>? LineReceived;
 
         private CancellationTokenSource? _cancellationTokenSource;
-        private AutomationElement? _monitoredTerminal;
+        private IntPtr _monitoredTerminalHandle;
         private string _lastContent = string.Empty;
         private readonly HashSet<string> _seenLines = new();
 
@@ -149,43 +148,36 @@ namespace ChromiumCompileMonitor.Services
             }
         }
 
-        private async Task<string> GetTerminalContentViaUIAutomation()
+        private async Task<string> GetTerminalContentViaWindowsAPI()
         {
             try
             {
-                if (_monitoredTerminal == null)
+                if (_monitoredTerminalHandle == IntPtr.Zero)
                     return string.Empty;
 
-                // Look for text patterns in the terminal
-                var textPattern = _monitoredTerminal.GetCurrentPattern(TextPattern.Pattern) as TextPattern;
-                if (textPattern != null)
-                {
-                    var documentRange = textPattern.DocumentRange;
-                    return documentRange.GetText(-1);
-                }
+                // Use GetWindowText as primary method
+                var buffer = new StringBuilder(32768);
+                GetWindowText(_monitoredTerminalHandle, buffer, buffer.Capacity);
+                var windowText = buffer.ToString();
 
-                // Alternative: Look for specific control types
-                var condition = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text);
-                var textElements = _monitoredTerminal.FindAll(TreeScope.Descendants, condition);
-                
-                var content = new StringBuilder();
-                foreach (AutomationElement element in textElements)
-                {
-                    try
-                    {
-                        var text = element.Current.Name;
-                        if (!string.IsNullOrEmpty(text))
-                        {
-                            content.AppendLine(text);
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        // Continue with other elements
-                    }
-                }
+                if (!string.IsNullOrEmpty(windowText))
+                    return windowText;
 
-                return content.ToString();
+                // Alternative: Try to read child window content
+                var childContent = new StringBuilder();
+                EnumChildWindows(_monitoredTerminalHandle, (hWnd, lParam) =>
+                {
+                    var childBuffer = new StringBuilder(1024);
+                    GetWindowText(hWnd, childBuffer, childBuffer.Capacity);
+                    var text = childBuffer.ToString();
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        childContent.AppendLine(text);
+                    }
+                    return true;
+                }, IntPtr.Zero);
+
+                return childContent.ToString();
             }
             catch (Exception)
             {
