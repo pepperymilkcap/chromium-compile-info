@@ -394,8 +394,6 @@ namespace ChromiumCompileMonitor.Services
                 }
             }
         }
-            }
-        }
 
         private void ProcessConsoleContent(List<string> consoleContent)
         {
