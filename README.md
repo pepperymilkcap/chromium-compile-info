@@ -42,13 +42,26 @@ ChromiumCompileMonitor/
 
 ## Getting Started
 
-### For Visual Studio 2022 Users (Recommended)
+### For Visual Studio 2022 Users (Windows Forms GUI - Recommended)
 
 1. Open `VisualStudioFiles/ChromiumCompileMonitor.sln` in Visual Studio 2022
 2. Build the solution (Ctrl+Shift+B)
 3. Run the application (F5)
 4. Select a terminal window from the dropdown
 5. Click "Start Monitoring" to begin tracking compilation progress
+
+**Note**: This solution includes both the Windows Forms GUI project and its associated tests.
+
+### For .NET CLI Users (Console Version)
+
+To use the console version for testing or development:
+
+1. Open `ChromiumCompileMonitor.sln` in Visual Studio or your preferred editor
+2. Build the solution: `dotnet build`
+3. Run tests: `dotnet test`
+4. Run console demo: `cd ChromiumCompileMonitor && dotnet run`
+
+**Note**: This solution includes the console application and its tests. The console version demonstrates the core parsing functionality with sample data.
 
 ### Console Version (For Testing)
 
@@ -148,12 +161,31 @@ The application automatically calculates:
 
 ## Building and Running
 
-### Visual Studio 2022
+### Option 1: Windows Forms GUI (Visual Studio 2022)
 
 1. Open `VisualStudioFiles/ChromiumCompileMonitor.sln`
 2. Set build configuration to Debug or Release
 3. Build → Build Solution
 4. Debug → Start Debugging (F5)
+
+This solution includes:
+- ChromiumCompileMonitor (Windows Forms GUI project)  
+- ChromiumCompileMonitor.Tests (Tests for the GUI version)
+
+### Option 2: Console Version (.NET CLI)
+
+For the console version testing and development:
+```bash
+# Open the root solution
+cd /path/to/repository
+dotnet build ChromiumCompileMonitor.sln
+dotnet test
+dotnet run --project ChromiumCompileMonitor
+```
+
+This solution includes:
+- ChromiumCompileMonitor (Console application project)
+- ChromiumCompileMonitor.Tests (Tests for the console version)
 
 ### Command Line (.NET CLI)
 

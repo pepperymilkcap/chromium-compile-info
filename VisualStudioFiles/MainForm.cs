@@ -37,7 +37,7 @@ namespace ChromiumCompileMonitor
         private TextBox _logTextBox = null!;
         private StatusStrip _statusStrip = null!;
         private ToolStripStatusLabel _statusLabel = null!;
-        private Timer _updateTimer = null!;
+        private System.Windows.Forms.Timer _updateTimer = null!;
 
         public MainForm()
         {
@@ -51,7 +51,7 @@ namespace ChromiumCompileMonitor
             FormClosing += MainForm_FormClosing;
 
             // Initialize update timer for UI refreshes
-            _updateTimer = new Timer();
+            _updateTimer = new System.Windows.Forms.Timer();
             _updateTimer.Interval = 100; // 100ms refresh rate
             _updateTimer.Tick += UpdateTimer_Tick;
             _updateTimer.Start();
@@ -74,10 +74,10 @@ namespace ChromiumCompileMonitor
             };
 
             // Set up row styles
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));  // Terminal selection
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));  // Progress overview
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));  // Terminal selection - increased height
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));  // Progress overview - increased height
             mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Detailed info
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 25));  // Status bar
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));  // Status bar - increased height
 
             // Terminal Selection Group
             var terminalGroup = CreateTerminalSelectionGroup();
@@ -164,9 +164,10 @@ namespace ChromiumCompileMonitor
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 2
+                RowCount = 2,
+                Margin = new Padding(3)
             };
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 25));
+            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); // Increased height for progress bar
             panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             _progressBar = new ProgressBar
@@ -181,7 +182,8 @@ namespace ChromiumCompileMonitor
                 Text = "0.0% Complete (0/0 blocks)",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
-                Font = new Font(Font, FontStyle.Bold)
+                Font = new Font(Font, FontStyle.Bold),
+                Margin = new Padding(5, 3, 5, 3) // Add proper margins
             };
 
             panel.Controls.Add(_progressBar, 0, 0);
@@ -206,7 +208,7 @@ namespace ChromiumCompileMonitor
                 ColumnCount = 1,
                 RowCount = 2
             };
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 160));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 180)); // Increased height for info panel
             mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             // Info panel
@@ -215,36 +217,42 @@ namespace ChromiumCompileMonitor
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 6,
-                Padding = new Padding(5)
+                Padding = new Padding(8)
             };
-            infoPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
+            infoPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190)); // Increased width
             infoPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            
+            // Add row styles for proper spacing
+            for (int i = 0; i < 6; i++)
+            {
+                infoPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 28)); // Increased row height
+            }
 
             var labelFont = new Font(Font, FontStyle.Bold);
 
             // Time Information
-            infoPanel.Controls.Add(new Label { Text = "Time Elapsed:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft }, 0, 0);
-            _elapsedTimeLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft };
+            infoPanel.Controls.Add(new Label { Text = "Time Elapsed:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 0);
+            _elapsedTimeLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
             infoPanel.Controls.Add(_elapsedTimeLabel, 1, 0);
 
-            infoPanel.Controls.Add(new Label { Text = "Estimated Time Remaining:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft }, 0, 1);
-            _estimatedRemainingLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft };
+            infoPanel.Controls.Add(new Label { Text = "Estimated Time Remaining:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 1);
+            _estimatedRemainingLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
             infoPanel.Controls.Add(_estimatedRemainingLabel, 1, 1);
 
-            infoPanel.Controls.Add(new Label { Text = "Estimated Total Time:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft }, 0, 2);
-            _estimatedTotalLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft };
+            infoPanel.Controls.Add(new Label { Text = "Estimated Total Time:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 2);
+            _estimatedTotalLabel = new Label { Text = "00:00:00", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
             infoPanel.Controls.Add(_estimatedTotalLabel, 1, 2);
 
-            infoPanel.Controls.Add(new Label { Text = "Time per Block:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft }, 0, 3);
-            _timePerBlockLabel = new Label { Text = "0.00 seconds", TextAlign = ContentAlignment.MiddleLeft };
+            infoPanel.Controls.Add(new Label { Text = "Time per Block:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 3);
+            _timePerBlockLabel = new Label { Text = "0.00 seconds", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
             infoPanel.Controls.Add(_timePerBlockLabel, 1, 3);
 
-            infoPanel.Controls.Add(new Label { Text = "Speed Trend:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft }, 0, 4);
-            _speedTrendLabel = new Label { Text = "Unknown", TextAlign = ContentAlignment.MiddleLeft };
+            infoPanel.Controls.Add(new Label { Text = "Speed Trend:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 4);
+            _speedTrendLabel = new Label { Text = "Unknown", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
             infoPanel.Controls.Add(_speedTrendLabel, 1, 4);
 
-            infoPanel.Controls.Add(new Label { Text = "Last Update:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft }, 0, 5);
-            _lastUpdateLabel = new Label { Text = "--:--:--", TextAlign = ContentAlignment.MiddleLeft };
+            infoPanel.Controls.Add(new Label { Text = "Last Update:", Font = labelFont, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) }, 0, 5);
+            _lastUpdateLabel = new Label { Text = "--:--:--", TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0, 3, 0, 3) };
             infoPanel.Controls.Add(_lastUpdateLabel, 1, 5);
 
             // Log output
@@ -280,36 +288,80 @@ namespace ChromiumCompileMonitor
 
         private async void MainForm_Load(object sender, EventArgs e)
         {
-            await RefreshTerminals();
+            try
+            {
+                // Ensure UI is fully initialized before starting async operations
+                await Task.Delay(100); // Short delay to ensure UI components are ready
+                await RefreshTerminals();
+            }
+            catch (Exception ex)
+            {
+                if (_statusLabel != null) _statusLabel.Text = $"Error during startup: {ex.Message}";
+                MessageBox.Show($"Error during application startup: {ex.Message}", "Startup Error", 
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            _updateTimer?.Stop();
-            _updateTimer?.Dispose();
-            StopMonitoring();
+            try
+            {
+                _updateTimer?.Stop();
+                _updateTimer?.Dispose();
+                StopMonitoring();
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't prevent form closing
+                System.Diagnostics.Debug.WriteLine($"Error during form closing: {ex.Message}");
+            }
         }
 
         private void TerminalComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            _selectedTerminal = _terminalComboBox.SelectedItem as TerminalInfo;
-            UpdateStartStopButtonState();
+            try
+            {
+                _selectedTerminal = _terminalComboBox.SelectedItem as TerminalInfo;
+                UpdateStartStopButtonState();
+            }
+            catch (Exception ex)
+            {
+                _statusLabel.Text = $"Error selecting terminal: {ex.Message}";
+            }
         }
 
         private async void RefreshButton_Click(object sender, EventArgs e)
         {
-            await RefreshTerminals();
+            try
+            {
+                await RefreshTerminals();
+            }
+            catch (Exception ex)
+            {
+                _statusLabel.Text = $"Error refreshing terminals: {ex.Message}";
+                MessageBox.Show($"Error refreshing terminal list: {ex.Message}", "Refresh Error", 
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private async void StartStopButton_Click(object sender, EventArgs e)
         {
-            if (_terminalMonitor.IsMonitoring)
+            try
             {
-                StopMonitoring();
+                if (_terminalMonitor.IsMonitoring)
+                {
+                    StopMonitoring();
+                }
+                else
+                {
+                    await StartMonitoring();
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await StartMonitoring();
+                _statusLabel.Text = $"Error toggling monitoring: {ex.Message}";
+                MessageBox.Show($"Error starting/stopping monitoring: {ex.Message}", "Monitoring Error", 
+                              MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -322,36 +374,39 @@ namespace ChromiumCompileMonitor
         {
             try
             {
-                _statusLabel.Text = "Scanning for terminal windows...";
-                _refreshButton.Enabled = false;
+                if (_statusLabel != null) _statusLabel.Text = "Scanning for terminal windows...";
+                if (_refreshButton != null) _refreshButton.Enabled = false;
                 
                 var terminals = await _terminalMonitor.GetAvailableTerminalsAsync();
                 _availableTerminals = terminals;
-                _terminalComboBox.DataSource = null;
-                _terminalComboBox.DataSource = _availableTerminals;
+                if (_terminalComboBox != null)
+                {
+                    _terminalComboBox.DataSource = null;
+                    _terminalComboBox.DataSource = _availableTerminals;
+                }
                 
                 if (terminals.Any())
                 {
-                    _statusLabel.Text = $"Found {terminals.Count} terminal window(s)";
-                    if (_selectedTerminal == null && _terminalComboBox.Items.Count > 0)
+                    if (_statusLabel != null) _statusLabel.Text = $"Found {terminals.Count} terminal window(s)";
+                    if (_selectedTerminal == null && _terminalComboBox != null && _terminalComboBox.Items.Count > 0)
                     {
                         _terminalComboBox.SelectedIndex = 0;
                     }
                 }
                 else
                 {
-                    _statusLabel.Text = "No terminal windows found";
+                    if (_statusLabel != null) _statusLabel.Text = "No terminal windows found";
                 }
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"Error scanning terminals: {ex.Message}";
+                if (_statusLabel != null) _statusLabel.Text = $"Error scanning terminals: {ex.Message}";
                 MessageBox.Show($"Error scanning for terminals: {ex.Message}", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                _refreshButton.Enabled = true;
+                if (_refreshButton != null) _refreshButton.Enabled = true;
             }
         }
 
@@ -367,22 +422,25 @@ namespace ChromiumCompileMonitor
             try
             {
                 _monitoringCancellationTokenSource = new CancellationTokenSource();
-                _statusLabel.Text = $"Starting monitoring of {_selectedTerminal.ProcessName}...";
+                if (_statusLabel != null) _statusLabel.Text = $"Starting monitoring of {_selectedTerminal.ProcessName}...";
                 
                 // Clear previous data
                 _currentProgress = null;
                 _logOutput.Clear();
                 
-                _startStopButton.Text = "Stop Monitoring";
-                _startStopButton.Enabled = true;
-                _refreshButton.Enabled = false;
-                _terminalComboBox.Enabled = false;
+                if (_startStopButton != null)
+                {
+                    _startStopButton.Text = "Stop Monitoring";
+                    _startStopButton.Enabled = true;
+                }
+                if (_refreshButton != null) _refreshButton.Enabled = false;
+                if (_terminalComboBox != null) _terminalComboBox.Enabled = false;
 
                 await _terminalMonitor.StartMonitoringAsync(_selectedTerminal, _monitoringCancellationTokenSource.Token);
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"Error starting monitoring: {ex.Message}";
+                if (_statusLabel != null) _statusLabel.Text = $"Error starting monitoring: {ex.Message}";
                 MessageBox.Show($"Error starting monitoring: {ex.Message}", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error);
                 StopMonitoring();
@@ -399,15 +457,18 @@ namespace ChromiumCompileMonitor
                 
                 _terminalMonitor.StopMonitoring();
                 
-                _statusLabel.Text = "Monitoring stopped";
-                _startStopButton.Text = "Start Monitoring";
-                _startStopButton.Enabled = true;
-                _refreshButton.Enabled = true;
-                _terminalComboBox.Enabled = true;
+                if (_statusLabel != null) _statusLabel.Text = "Monitoring stopped";
+                if (_startStopButton != null)
+                {
+                    _startStopButton.Text = "Start Monitoring";
+                    _startStopButton.Enabled = true;
+                }
+                if (_refreshButton != null) _refreshButton.Enabled = true;
+                if (_terminalComboBox != null) _terminalComboBox.Enabled = true;
             }
             catch (Exception ex)
             {
-                _statusLabel.Text = $"Error stopping monitoring: {ex.Message}";
+                if (_statusLabel != null) _statusLabel.Text = $"Error stopping monitoring: {ex.Message}";
             }
         }
 
@@ -436,7 +497,7 @@ namespace ChromiumCompileMonitor
                 if (progress != null)
                 {
                     _currentProgress = progress;
-                    _statusLabel.Text = $"Monitoring - Last update: {progress.LastUpdate:HH:mm:ss}";
+                    if (_statusLabel != null) _statusLabel.Text = $"Monitoring - Last update: {progress.LastUpdate:HH:mm:ss}";
                 }
             }
             catch (Exception ex)
@@ -450,7 +511,7 @@ namespace ChromiumCompileMonitor
             try
             {
                 // Update log text box
-                if (_logTextBox.Text != _logOutput.ToString())
+                if (_logTextBox != null && _logTextBox.Text != _logOutput.ToString())
                 {
                     _logTextBox.Text = _logOutput.ToString();
                     _logTextBox.SelectionStart = _logTextBox.Text.Length;
@@ -460,38 +521,51 @@ namespace ChromiumCompileMonitor
                 if (_currentProgress != null)
                 {
                     // Update progress bar and label
-                    _progressBar.Value = Math.Min(100, Math.Max(0, (int)_currentProgress.PercentageCompleted));
-                    _progressLabel.Text = $"{_currentProgress.PercentageCompleted:F1}% Complete ({_currentProgress.CompiledBlocks}/{_currentProgress.TotalBlocks} blocks)";
+                    if (_progressBar != null)
+                        _progressBar.Value = Math.Min(100, Math.Max(0, (int)_currentProgress.PercentageCompleted));
+                    if (_progressLabel != null)
+                        _progressLabel.Text = $"{_currentProgress.PercentageCompleted:F1}% Complete ({_currentProgress.CompiledBlocks}/{_currentProgress.TotalBlocks} blocks)";
 
                     // Update time information
-                    _elapsedTimeLabel.Text = _currentProgress.ElapsedTime.ToString(@"hh\:mm\:ss");
-                    _estimatedRemainingLabel.Text = _currentProgress.EstimatedTimeRemaining.ToString(@"hh\:mm\:ss");
-                    _estimatedTotalLabel.Text = _currentProgress.EstimatedTotalTime.ToString(@"hh\:mm\:ss");
-                    _timePerBlockLabel.Text = $"{_currentProgress.TimePerBlock:F2} seconds";
-                    _lastUpdateLabel.Text = _currentProgress.LastUpdate.ToString("HH:mm:ss");
+                    if (_elapsedTimeLabel != null)
+                        _elapsedTimeLabel.Text = _currentProgress.ElapsedTime.ToString(@"hh\:mm\:ss");
+                    if (_estimatedRemainingLabel != null)
+                        _estimatedRemainingLabel.Text = _currentProgress.EstimatedTimeRemaining.ToString(@"hh\:mm\:ss");
+                    if (_estimatedTotalLabel != null)
+                        _estimatedTotalLabel.Text = _currentProgress.EstimatedTotalTime.ToString(@"hh\:mm\:ss");
+                    if (_timePerBlockLabel != null)
+                        _timePerBlockLabel.Text = $"{_currentProgress.TimePerBlock:F2} seconds";
+                    if (_lastUpdateLabel != null)
+                        _lastUpdateLabel.Text = _currentProgress.LastUpdate.ToString("HH:mm:ss");
 
                     // Update speed trend with color
-                    _speedTrendLabel.Text = _currentProgress.SpeedTrend;
-                    _speedTrendLabel.ForeColor = _currentProgress.SpeedTrend switch
+                    if (_speedTrendLabel != null)
                     {
-                        "Sped up" => Color.Green,
-                        "Slowed down" => Color.Red,
-                        "Steady" => Color.Blue,
-                        _ => Color.Black
-                    };
+                        _speedTrendLabel.Text = _currentProgress.SpeedTrend;
+                        _speedTrendLabel.ForeColor = _currentProgress.SpeedTrend switch
+                        {
+                            "Sped up" => Color.Green,
+                            "Slowed down" => Color.Red,
+                            "Steady" => Color.Blue,
+                            _ => Color.Black
+                        };
+                    }
                 }
                 else
                 {
                     // Reset to default values
-                    _progressBar.Value = 0;
-                    _progressLabel.Text = "0.0% Complete (0/0 blocks)";
-                    _elapsedTimeLabel.Text = "00:00:00";
-                    _estimatedRemainingLabel.Text = "00:00:00";
-                    _estimatedTotalLabel.Text = "00:00:00";
-                    _timePerBlockLabel.Text = "0.00 seconds";
-                    _speedTrendLabel.Text = "Unknown";
-                    _speedTrendLabel.ForeColor = Color.Black;
-                    _lastUpdateLabel.Text = "--:--:--";
+                    if (_progressBar != null) _progressBar.Value = 0;
+                    if (_progressLabel != null) _progressLabel.Text = "0.0% Complete (0/0 blocks)";
+                    if (_elapsedTimeLabel != null) _elapsedTimeLabel.Text = "00:00:00";
+                    if (_estimatedRemainingLabel != null) _estimatedRemainingLabel.Text = "00:00:00";
+                    if (_estimatedTotalLabel != null) _estimatedTotalLabel.Text = "00:00:00";
+                    if (_timePerBlockLabel != null) _timePerBlockLabel.Text = "0.00 seconds";
+                    if (_speedTrendLabel != null)
+                    {
+                        _speedTrendLabel.Text = "Unknown";
+                        _speedTrendLabel.ForeColor = Color.Black;
+                    }
+                    if (_lastUpdateLabel != null) _lastUpdateLabel.Text = "--:--:--";
                 }
             }
             catch (Exception)
@@ -502,9 +576,25 @@ namespace ChromiumCompileMonitor
 
         private void UpdateStartStopButtonState()
         {
-            if (!_terminalMonitor.IsMonitoring)
+            try
             {
-                _startStopButton.Enabled = _selectedTerminal != null;
+                if (_startStopButton != null)
+                {
+                    if (!_terminalMonitor.IsMonitoring)
+                    {
+                        _startStopButton.Enabled = _selectedTerminal != null;
+                        _startStopButton.Text = "Start Monitoring";
+                    }
+                    else
+                    {
+                        _startStopButton.Enabled = true;
+                        _startStopButton.Text = "Stop Monitoring";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating start/stop button state: {ex.Message}");
             }
         }
     }

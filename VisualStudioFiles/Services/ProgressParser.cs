@@ -81,25 +81,25 @@ namespace ChromiumCompileMonitor.Services
             try
             {
                 // Handle various time formats
-                // XmYs format (e.g., "5m30s")
-                var minutesSecondsPattern = new Regex(@"(\d+)m(\d+)s");
-                var match = minutesSecondsPattern.Match(timeStr);
-                if (match.Success)
-                {
-                    var minutes = int.Parse(match.Groups[1].Value);
-                    var seconds = int.Parse(match.Groups[2].Value);
-                    return new TimeSpan(0, minutes, seconds);
-                }
-
-                // HhMmSs format (e.g., "1h30m45s")
+                // HhMmSs format (e.g., "1h30m45s") - Check this FIRST
                 var hoursMinutesSecondsPattern = new Regex(@"(\d+)h(\d+)m(\d+)s");
-                match = hoursMinutesSecondsPattern.Match(timeStr);
+                var match = hoursMinutesSecondsPattern.Match(timeStr);
                 if (match.Success)
                 {
                     var hours = int.Parse(match.Groups[1].Value);
                     var minutes = int.Parse(match.Groups[2].Value);
                     var seconds = int.Parse(match.Groups[3].Value);
                     return new TimeSpan(hours, minutes, seconds);
+                }
+
+                // XmYs format (e.g., "5m30s")
+                var minutesSecondsPattern = new Regex(@"(\d+)m(\d+)s");
+                match = minutesSecondsPattern.Match(timeStr);
+                if (match.Success)
+                {
+                    var minutes = int.Parse(match.Groups[1].Value);
+                    var seconds = int.Parse(match.Groups[2].Value);
+                    return new TimeSpan(0, minutes, seconds);
                 }
 
                 // Just minutes format (e.g., "5m")
