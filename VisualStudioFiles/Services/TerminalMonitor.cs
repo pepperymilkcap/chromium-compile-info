@@ -342,6 +342,8 @@ namespace ChromiumCompileMonitor.Services
                 return terminals.DistinctBy(t => t.ProcessId).ToList();
             });
         }
+
+        private async Task<List<TerminalInfo>> GetAvailableTerminalsAsyncInternal()
         {
             return await Task.Run(() =>
             {
@@ -450,7 +452,7 @@ namespace ChromiumCompileMonitor.Services
                     "build.log",
                     "ninja.log", 
                     "out/Default/build.log",
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Temp), "build.log")
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "build.log")
                 };
                 
                 foreach (var logPath in logPaths)
