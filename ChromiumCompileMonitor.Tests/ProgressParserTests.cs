@@ -14,10 +14,10 @@ namespace ChromiumCompileMonitor.Tests
         }
 
         [Theory]
-        [InlineData("[100/900] 5m30s", 100, 900, 330)] // 5m30s = 330 seconds
-        [InlineData("[250/750] 12m45s", 250, 750, 765)] // 12m45s = 765 seconds
-        [InlineData("[500/500] 1h5m30s", 500, 500, 3930)] // 1h5m30s = 3930 seconds
-        [InlineData("[999/1] 2h15m45s", 999, 1, 8145)] // 2h15m45s = 8145 seconds
+        [InlineData("[100/900] 5m30s", 100, 800, 330)] // 100 compiled out of 900 total, 800 remaining
+        [InlineData("[250/750] 12m45s", 250, 500, 765)] // 250 compiled out of 750 total, 500 remaining
+        [InlineData("[500/500] 1h5m30s", 500, 0, 3930)] // 500 compiled out of 500 total, 0 remaining (100% complete)
+        [InlineData("[999/1000] 2h15m45s", 999, 1, 8145)] // 999 compiled out of 1000 total, 1 remaining
         public void ParseLine_ValidInput_ReturnsCorrectProgress(string input, int expectedCompiled, int expectedRemaining, int expectedElapsedSeconds)
         {
             // Act
@@ -32,10 +32,10 @@ namespace ChromiumCompileMonitor.Tests
         }
 
         [Theory]
-        [InlineData("[100/900] 5m30s", 10.0)] // 100/1000 = 10%
-        [InlineData("[250/750] 12m45s", 25.0)] // 250/1000 = 25%
-        [InlineData("[500/500] 1h5m30s", 50.0)] // 500/1000 = 50%
-        [InlineData("[999/1] 2h15m45s", 99.9)] // 999/1000 = 99.9%
+        [InlineData("[100/900] 5m30s", 11.1)] // 100/900 = 11.1%
+        [InlineData("[250/750] 12m45s", 33.3)] // 250/750 = 33.3%
+        [InlineData("[500/500] 1h5m30s", 100.0)] // 500/500 = 100%
+        [InlineData("[999/1000] 2h15m45s", 99.9)] // 999/1000 = 99.9%
         public void ParseLine_ValidInput_CalculatesCorrectPercentage(string input, double expectedPercentage)
         {
             // Act
@@ -64,7 +64,7 @@ namespace ChromiumCompileMonitor.Tests
         [InlineData("[100/900] 5m")]
         [InlineData("[250/750] 45s")]
         [InlineData("[500/500] 300")]
-        [InlineData("[999/1] 1h30m0s")]
+        [InlineData("[999/1000] 1h30m0s")]
         public void ParseLine_DifferentTimeFormats_ParsesSuccessfully(string input)
         {
             // Act

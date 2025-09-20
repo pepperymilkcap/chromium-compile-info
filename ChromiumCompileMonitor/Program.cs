@@ -40,10 +40,10 @@ namespace ChromiumCompileMonitor
                 "[100/900] 5m30s",
                 "[250/750] 12m45s", 
                 "[500/500] 25m15s",
-                "[750/250] 1h5m30s",
-                "[900/100] 1h45m20s",
+                "[750/1000] 1h5m30s",
+                "[900/1000] 1h45m20s",
                 "Invalid line - should be ignored",
-                "[999/1] 2h15m45s"
+                "[999/1000] 2h15m45s"
             };
 
             foreach (var line in sampleLines)

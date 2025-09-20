@@ -6,7 +6,7 @@ namespace ChromiumCompileMonitor.Services
 {
     public class ProgressParser
     {
-        // Pattern to match [compiled_blocks/remaining_blocks] elapsed_time
+        // Pattern to match [compiled_blocks/total_blocks] elapsed_time
         private readonly Regex _progressPattern = new Regex(
             @"\[(\d+)/(\d+)\]\s*(\S+)",
             RegexOptions.Compiled);
@@ -25,7 +25,7 @@ namespace ChromiumCompileMonitor.Services
             try
             {
                 var compiledBlocks = int.Parse(match.Groups[1].Value);
-                var remainingBlocks = int.Parse(match.Groups[2].Value);
+                var totalBlocks = int.Parse(match.Groups[2].Value);
                 var elapsedTimeStr = match.Groups[3].Value;
 
                 var elapsedTime = ParseElapsedTime(elapsedTimeStr);
@@ -35,7 +35,7 @@ namespace ChromiumCompileMonitor.Services
                 var progress = new CompileProgress
                 {
                     CompiledBlocks = compiledBlocks,
-                    RemainingBlocks = remainingBlocks,
+                    RemainingBlocks = totalBlocks - compiledBlocks,
                     ElapsedTime = elapsedTime.Value,
                     LastUpdate = DateTime.Now
                 };
